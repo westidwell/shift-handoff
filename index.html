@@ -1,0 +1,2789 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-75Wqx2Ena15nUYJ7KmO/QGwvMdPzHzB/RwKO+vmJDtc=' 'sha256-mf8BtflKvkQIEUkGNoDcp1jgcYJIDZi9CIkw+VTvlrw=' 'sha256-4PQe/bahXX05iTPWQib1clQO3JO5Edw/Fm3Rt0VrJE8=' 'sha256-QLcNb3l+vUqBxEk9TYn7VG8N82i9dqHwGebQAeQUXnc=' 'sha256-HYCJzPhvxyqpStrKu21Zl7LLlFNL0DGbwzleWdJAues='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; manifest-src 'self'; worker-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Shift Handoff</title>
+<meta name="description" content="A free one-page log for handing work from one shift to the next: what is open, what is waiting on whom, what happened, and what to do first.">
+<meta name="app-version" content="1.0.0">
+<meta name="theme-color" content="#0e1116">
+<meta name="color-scheme" content="dark">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Handoff">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%23f2a93b%22%2F%3E%3Cpath%20d%3D%22M14%2022h30m-8-8%208%208-8%208M50%2042H20m8-8-8%208%208%208%22%20fill%3D%22none%22%20stroke%3D%22%2314161b%22%20stroke-width%3D%226%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+/* Shift Handoff: one dark, phone-first stylesheet. Light only on paper. */
+:root {
+  --bg: #0e1116;
+  --surface: #161a22;
+  --surface-2: #1e232d;
+  --line: #2b313d;
+  --text: #ebe8e2;
+  --muted: #9ca2ac;
+  --accent: #f2a93b;
+  --accent-ink: #1a1205;
+  --ok: #5cc690;
+  --bad: #ff7a6e;
+  --soon: #f5d06a;
+  --info: #7fb0ff;
+  --radius: 12px;
+  --tap: 44px;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+}
+a { color: var(--accent); }
+code { background: var(--surface-2); border: 1px solid var(--line); border-radius: 5px; padding: 0 4px; font-size: .92em; }
+h1 { font-size: 22px; margin: 18px 0 6px; letter-spacing: -.2px; }
+h2 { font-size: 17px; margin: 0 0 6px; }
+h3 { font-size: 15px; margin: 12px 0 4px; color: var(--muted); }
+p { margin: 6px 0; }
+.muted { color: var(--muted); }
+.small { font-size: 13.5px; }
+.lead { color: var(--muted); margin: 0 0 12px; }
+.count { color: var(--muted); font-weight: 600; font-size: .9em; }
+.empty { color: var(--muted); padding: 6px 0 10px; margin: 0; }
+[hidden] { display: none !important; }
+
+/* ---------- layout ---------- */
+.wrap {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 4px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px));
+}
+header.top {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.topbar, nav.views {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.topbar { display: flex; align-items: center; gap: 12px; padding-top: 10px; padding-bottom: 8px; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.brand-icon { width: 30px; height: 30px; flex: none; }
+.brand-text { display: flex; flex-direction: column; min-width: 0; }
+.place { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.who { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.save { font-size: 12px; color: var(--muted); flex: none; }
+.save.bad { color: var(--bad); font-weight: 600; }
+nav.views { display: flex; gap: 6px; padding-bottom: 10px; }
+
+/* ---------- controls ---------- */
+.tab {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 7px 14px;
+  min-height: 36px;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.tab[aria-current="page"], .tab[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+  font-weight: 650;
+}
+.tab[aria-current="page"] .count, .tab[aria-pressed="true"] .count { color: var(--accent-ink); }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--tap);
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  padding: 8px 16px;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+a.btn { border-bottom-width: 1px; }
+.btn.ghost { background: transparent; color: var(--text); border-color: var(--line); font-weight: 500; }
+.btn.small { min-height: 38px; padding: 6px 12px; font-size: 14px; }
+.btn.wide { width: 100%; margin-top: 4px; }
+.btn.danger { background: var(--bad); border-color: var(--bad); color: #1b0605; }
+.btn.danger-text { color: var(--bad); }
+.btn.got { background: var(--ok); border-color: var(--ok); color: #04170d; }
+.btn.locked { color: var(--muted); border-style: dashed; }
+.btn.locked .lock { width: 14px; height: 14px; }
+.pro-tag {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  border: 1px solid currentColor;
+  border-radius: 5px;
+  padding: 0 5px;
+}
+button.link {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 1px solid currentColor;
+}
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+.row-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ---------- cards ---------- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin: 12px 0;
+}
+.card.start h1 { margin-top: 0; }
+.banner {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px 14px;
+  align-items: center;
+  border: 1px solid var(--ok);
+  background: rgba(92, 198, 144, .08);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin: 12px 0;
+}
+.banner progress { grid-column: 1 / -1; width: 100%; height: 8px; accent-color: var(--ok); }
+.banner .btn { grid-row: 1; grid-column: 2; }
+
+.first { border-color: var(--accent); }
+.first-list { list-style: none; margin: 4px 0 0; padding: 0; counter-reset: first; }
+.first-list li { counter-increment: first; border-top: 1px solid var(--line); }
+.first-list li:first-child { border-top: 0; }
+.first-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 8px;
+  width: 100%;
+  background: none;
+  border: 0;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  padding: 9px 0;
+  cursor: pointer;
+}
+.first-item::before {
+  content: counter(first);
+  grid-row: 1 / span 2;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.first-item .badge { display: none; }
+.first-text { grid-column: 2; }
+.first-meta { grid-column: 2; font-size: 13.5px; color: var(--muted); }
+
+/* ---------- board ---------- */
+.coltabs { display: flex; gap: 6px; margin: 16px 0 4px; }
+.coltabs .tab { flex: 1; }
+.board { display: block; }
+.col h2 { margin-top: 14px; }
+.col-note { color: var(--muted); font-size: 13.5px; margin: -4px 0 6px; }
+@media (max-width: 879px) {
+  .board[data-show="open"] .col:not([data-col="open"]),
+  .board[data-show="waiting"] .col:not([data-col="waiting"]),
+  .board[data-show="done"] .col:not([data-col="done"]) { display: none; }
+  .col > h2, .col > .col-note { display: none; }
+}
+@media (min-width: 880px) {
+  .coltabs { display: none; }
+  .board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+}
+
+.entry {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px 12px 10px;
+  margin: 10px 0;
+  transition: box-shadow .3s;
+}
+.entry.pri-high { border-left-color: var(--accent); }
+.entry.pri-low { border-left-color: #3b4250; }
+.entry.due-overdue { border-color: var(--bad); border-left-color: var(--bad); }
+.entry.needs-ack { box-shadow: 0 0 0 1px var(--ok) inset; }
+.entry.flash { box-shadow: 0 0 0 3px var(--accent); }
+.entry-top { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.entry .text { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+.entry .meta { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
+.entry .ack { color: var(--ok); font-size: 13.5px; font-weight: 600; margin: 6px 0 0; }
+.entry .actions { margin-top: 10px; }
+.col[data-col="done"] .entry { opacity: .86; }
+
+.badge, .pill {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 1px 7px;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+.badge { text-transform: uppercase; letter-spacing: .3px; margin-right: 6px; }
+.badge.high { color: var(--accent); }
+.badge.low { color: var(--muted); }
+.pill.wait { color: var(--info); }
+.pill.new { color: var(--ok); }
+.due-overdue { color: var(--bad); }
+.due-soon { color: var(--soon); }
+.due-later { color: var(--muted); }
+.pill.due-overdue { background: rgba(255, 122, 110, .12); }
+
+/* ---------- summary ---------- */
+.summary h2 { margin-top: 18px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin: 10px 0 4px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+.stat b { display: block; font-size: 24px; }
+.stat span { color: var(--muted); font-size: 13px; }
+.s-list { margin: 4px 0; padding-left: 22px; }
+.s-list li { margin: 6px 0; overflow-wrap: anywhere; }
+.done-list { list-style: none; padding-left: 0; }
+.s-time { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 8px; white-space: nowrap; }
+.s-meta { color: var(--muted); font-size: 14px; }
+.past { list-style: none; margin: 0; padding: 0; }
+.past li { padding: 8px 0; border-top: 1px solid var(--line); }
+.past li:first-child { border-top: 0; }
+.pro-list { list-style: none; margin: 0; padding: 0; }
+.pro-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 6px 0; }
+
+/* ---------- forms ---------- */
+label.f, p.f, span.f, legend { display: block; font-weight: 600; font-size: 14px; margin: 14px 0 6px; padding: 0; }
+.hint { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
+input:not([type="radio"]), textarea, select {
+  width: 100%;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 10px 11px;
+  min-height: var(--tap);
+  font: inherit;
+}
+textarea { resize: vertical; min-height: 96px; }
+fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+fieldset.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+fieldset.chips legend { width: 100%; }
+.chip { position: relative; }
+.chip input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.chip span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  border-radius: 999px;
+  padding: 6px 13px;
+  font-size: 14px;
+  cursor: pointer;
+  user-select: none;
+}
+.chip input:checked + span { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 650; }
+.chip input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.when-waiting, .when-pick { display: none; }
+form[data-status="waiting"] .when-waiting { display: block; }
+form[data-due="pick"] .when-pick { display: block; margin-top: 6px; }
+.attach { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.attach .f { width: 100%; margin-bottom: 0; }
+.form-error { color: var(--bad); font-weight: 600; min-height: 1px; margin: 10px 0 0; }
+.history { margin-top: 16px; color: var(--muted); font-size: 13.5px; }
+.history summary { cursor: pointer; }
+.history ul { list-style: none; padding: 0; margin: 6px 0 0; }
+.history li { margin: 4px 0; }
+.copybox { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+
+/* ---------- floating add, sheet, toast ---------- */
+.fab {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 6;
+  min-height: 56px;
+  padding: 0 22px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 750;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .45);
+  cursor: pointer;
+}
+.fab span { font-size: 22px; line-height: 1; margin-right: 4px; }
+
+dialog#sheet {
+  width: min(640px, 100%);
+  max-width: 100%;
+  max-height: 92vh;
+  overflow: auto;
+  overscroll-behavior: contain;
+  margin: auto auto 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 16px 16px 0 0;
+  background: var(--surface);
+  color: var(--text);
+}
+dialog#sheet::backdrop { background: rgba(0, 0, 0, .6); }
+@media (min-width: 700px) {
+  dialog#sheet { margin: auto; border-radius: 16px; }
+}
+.sheet-body { padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px)); }
+.sheet-body h2 { font-size: 19px; display: flex; align-items: center; gap: 8px; }
+.sheet-body h2 .lock { width: 18px; height: 18px; }
+.pro-inline { color: var(--muted); font-size: 13.5px; margin: 8px 0 0; }
+.pro-inline:empty { display: none; }
+.pro-inline .lock { width: 13px; height: 13px; vertical-align: -1px; }
+.pro-msg { background: var(--surface-2); border: 1px dashed var(--line); border-radius: 9px; padding: 10px 12px; font-weight: 600; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  transform: translate(-50%, 20px);
+  z-index: 7;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  max-width: calc(100% - 32px);
+  background: #262c38;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 16px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s, transform .2s;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; scroll-behavior: auto !important; }
+}
+
+/* ---------- paper ---------- */
+@media print {
+  :root { --bg: #fff; --surface: #fff; --surface-2: #fff; --text: #000; --muted: #444; --line: #bbb; --accent: #000; --bad: #000; --soon: #000; --ok: #000; --info: #000; }
+  body { background: #fff; color: #000; font-size: 11pt; padding: 0; }
+  header.top, .fab, .toast, dialog, .no-print, .coltabs, .actions { display: none !important; }
+  .wrap { max-width: none; padding: 0; }
+  .card, .entry, .stat { border-color: #bbb; break-inside: avoid; }
+  .summary h1 { margin-top: 0; }
+  .s-list li { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<header class="top" id="top"></header>
+<main class="wrap" id="app">
+  <noscript><p class="card">Shift Handoff needs JavaScript turned on. Nothing you type is sent anywhere; it all stays in this browser.</p></noscript>
+</main>
+<button type="button" class="fab" id="fab" data-act="add" aria-label="Add to the log"><span aria-hidden="true">+</span> Add</button>
+<dialog id="sheet" aria-label="Details"><div id="sheetBody" class="sheet-body"></div></dialog>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script>
+/*
+ * Shift Handoff: Pro stubs.
+ *
+ * The features below are reserved for the Pro edition, which is not open yet.
+ * Each one has a stub here so that if you go looking for it in the code, you
+ * find out straight away that it is planned for Pro, and where to read about it.
+ *
+ * Nothing in this file talks to a server, checks a licence, or records what
+ * anyone does. The stubs only throw a message.
+ */
+(function (root, factory) {
+  var api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.ShiftPro = api;
+}(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  /** Where Pro is described. Change the link or the price here and nowhere else. */
+  const PRO_URL = 'https://github.com/westidwell/shift-handoff/blob/main/PRO.md';
+  const PRO_PRICE = '$1/month';
+
+  /** The Pro list, in the order PRO.md shows it. `fn` is the stub below. */
+  const PRO_FEATURES = Object.freeze([
+    {
+      id: 'teamLog',
+      fn: 'startTeamLog',
+      name: 'Team live log',
+      line: 'One log shared live across every phone and screen on the team, so everyone sees the same Open, Waiting and Done.'
+    },
+    {
+      id: 'signIn',
+      fn: 'signIn',
+      name: 'Sign-in per person',
+      line: 'Each person signs in, so every entry, move and "I\'ve got it" carries a name you can trust.'
+    },
+    {
+      id: 'reminders',
+      fn: 'scheduleReminders',
+      name: 'Stuck-item nudge',
+      line: 'A nudge to the owner, then to the next shift, when an item sits open or waiting longer than you allow.'
+    },
+    {
+      id: 'media',
+      fn: 'attachMedia',
+      name: 'Photo or voice note',
+      line: 'Snap the broken part or leave a short voice note right on the entry.'
+    },
+    {
+      id: 'weeklyDigest',
+      fn: 'weeklyDigest',
+      name: 'Weekly digest',
+      line: 'A Monday recap of what got done, what keeps coming back and what sat the longest.'
+    },
+    {
+      id: 'spreadsheetExport',
+      fn: 'exportSpreadsheet',
+      name: 'Spreadsheet export',
+      line: 'A formatted .xlsx workbook with one tab per shift, made on demand or on a schedule.'
+    },
+    {
+      id: 'aiSummary',
+      fn: 'aiShiftSummary',
+      name: 'AI shift summary',
+      line: 'A short plain-English handover written from the log, ready to read out at shift change.'
+    }
+  ].map(Object.freeze));
+
+  /** The one message every stub and every locked button shows. */
+  function proMessage(featureName) {
+    return featureName + ' is part of Pro (' + PRO_PRICE + ', not open yet): see PRO.md';
+  }
+
+  class ProFeatureError extends Error {
+    constructor(feature) {
+      super(proMessage(feature.name));
+      this.name = 'ProFeatureError';
+      this.feature = feature.id;
+      this.featureName = feature.name;
+      this.url = PRO_URL;
+      this.price = PRO_PRICE;
+    }
+  }
+
+  function feature(id) {
+    const f = PRO_FEATURES.find(function (x) { return x.id === id; });
+    if (!f) throw new Error('Unknown Pro feature: ' + id);
+    return f;
+  }
+
+  function reserved(id) {
+    return new ProFeatureError(feature(id));
+  }
+
+  /**
+   * Team live log (planned for Pro).
+   * One log for the whole team, kept in sync live on every phone and the
+   * shared screen, so a change on one device shows up on all of them.
+   * The free version keeps the log on one device (see the README).
+   * @throws {ProFeatureError} always.
+   */
+  function startTeamLog(options) { throw reserved('teamLog'); }
+
+  /**
+   * Sign-in per person (planned for Pro).
+   * Each person signs in with their own account, so every entry, move and
+   * acknowledgement is tied to a real person instead of a typed name.
+   * The free version asks for a name when a shift starts.
+   * @throws {ProFeatureError} always.
+   */
+  function signIn(person) { throw reserved('signIn'); }
+
+  /**
+   * Stuck-item nudge (planned for Pro).
+   * Watches how long items sit Open or Waiting and nudges the owner, then the
+   * next shift, once an item passes the limit you set.
+   * The free version shows each item's age on its card.
+   * @throws {ProFeatureError} always.
+   */
+  function scheduleReminders(state, rules) { throw reserved('reminders'); }
+
+  /**
+   * Photo or voice note (planned for Pro).
+   * Attaches a photo or a short voice recording to an entry, so the next
+   * person can see the broken part or hear the details.
+   * @throws {ProFeatureError} always.
+   */
+  function attachMedia(entryId, file) { throw reserved('media'); }
+
+  /**
+   * Weekly digest (planned for Pro).
+   * Builds a once-a-week recap from every shift: what got done, what keeps
+   * coming back, and what sat the longest.
+   * The free version prints a summary for one shift at a time.
+   * @throws {ProFeatureError} always.
+   */
+  function weeklyDigest(state, weekOf) { throw reserved('weeklyDigest'); }
+
+  /**
+   * Spreadsheet export (planned for Pro).
+   * Writes a formatted .xlsx workbook with one tab per shift.
+   * The free version exports a plain CSV file that any spreadsheet opens.
+   * @throws {ProFeatureError} always.
+   */
+  function exportSpreadsheet(state) { throw reserved('spreadsheetExport'); }
+
+  /**
+   * AI shift summary (planned for Pro).
+   * Writes a short plain-English handover from the log, ready to read out at
+   * shift change. The free version builds a structured summary without AI.
+   * @throws {ProFeatureError} always.
+   */
+  function aiShiftSummary(state) { throw reserved('aiSummary'); }
+
+  /**
+   * What the page shows when someone taps a locked button: it calls the stub
+   * and returns the same message the stub throws, plus the link.
+   */
+  function explain(id) {
+    const f = feature(id);
+    try {
+      api[f.fn]();
+    } catch (err) {
+      if (err instanceof ProFeatureError) {
+        return { id: f.id, name: f.name, line: f.line, message: err.message, url: err.url };
+      }
+      throw err;
+    }
+    return null;
+  }
+
+  const api = {
+    PRO_URL: PRO_URL,
+    PRO_PRICE: PRO_PRICE,
+    PRO_FEATURES: PRO_FEATURES,
+    ProFeatureError: ProFeatureError,
+    proMessage: proMessage,
+    feature: feature,
+    explain: explain,
+    startTeamLog: startTeamLog,
+    signIn: signIn,
+    scheduleReminders: scheduleReminders,
+    attachMedia: attachMedia,
+    weeklyDigest: weeklyDigest,
+    exportSpreadsheet: exportSpreadsheet,
+    aiShiftSummary: aiShiftSummary
+  };
+  return api;
+}));
+</script>
+<script>
+/*
+ * Shift Handoff engine.
+ *
+ * Plain functions over a plain object. No DOM, no network, no clock of its own:
+ * every function that needs the time takes `now`. Functions that change the
+ * log return a new state and leave the old one alone, which is what makes
+ * "Undo" a one-liner in the page.
+ *
+ * The page and the Node tests load this same file.
+ */
+(function (root, factory) {
+  var api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.ShiftEngine = api;
+}(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  const APP_ID = 'shift-handoff';
+  const FORMAT = 1;
+  const STATUSES = ['open', 'waiting', 'done'];
+  const PRIORITIES = ['high', 'normal', 'low'];
+  const PRIORITY_RANK = { high: 0, normal: 1, low: 2 };
+  const CLOCKS = ['12h', '24h'];
+  const MAX_TEXT = 2000;
+  const MAX_NAME = 60;
+  const MAX_HISTORY = 50;
+  const MAX_SHIFTS = 200;
+  const MINUTE = 60000;
+  const DAY_MS = 86400000;
+  const DEFAULT_SETTINGS = Object.freeze({ place: 'Shift handoff', clock: '12h', soonMinutes: 60 });
+  const SHIFT_NAMES = ['Morning', 'Day', 'Evening', 'Overnight'];
+
+  // ---------------------------------------------------------------- helpers
+
+  function clone(x) { return JSON.parse(JSON.stringify(x)); }
+
+  function str(v, max) {
+    if (v === null || v === undefined) return '';
+    let s = String(v).replace(/\r\n?/g, '\n').trim();
+    if (max && s.length > max) s = s.slice(0, max).trim();
+    return s;
+  }
+
+  function cleanName(v) { return str(v, MAX_NAME).replace(/\s+/g, ' '); }
+
+  function toDate(v) {
+    if (v === null || v === undefined || v === '') return null;
+    const d = v instanceof Date ? new Date(v.getTime()) : new Date(v);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  function isoOrNull(v) {
+    const d = toDate(v);
+    return d ? d.toISOString() : null;
+  }
+
+  function ms(v) {
+    const d = toDate(v);
+    return d ? d.getTime() : NaN;
+  }
+
+  function nowDate(now) {
+    const d = toDate(now === undefined ? new Date() : now);
+    if (!d) throw new Error('That is not a valid time.');
+    return d;
+  }
+
+  /** `now` plus a number of minutes, rounded down to the whole minute. */
+  function addMinutes(now, minutes) {
+    const d = new Date(nowDate(now).getTime() + minutes * MINUTE);
+    d.setSeconds(0, 0);
+    return d;
+  }
+
+  let idCounter = 0;
+  function uid(now) {
+    let rand = '';
+    const c = typeof crypto !== 'undefined' && crypto && typeof crypto.getRandomValues === 'function' ? crypto : null;
+    if (c) {
+      const a = new Uint32Array(2);
+      c.getRandomValues(a);
+      rand = a[0].toString(36) + a[1].toString(36);
+    } else {
+      rand = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    }
+    idCounter = (idCounter + 1) % 1296;
+    return nowDate(now).getTime().toString(36) + '-' + idCounter.toString(36) + rand.slice(0, 8);
+  }
+
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+
+  // ---------------------------------------------------------- normalising
+
+  function normalizeSettings(raw) {
+    const s = raw && typeof raw === 'object' ? raw : {};
+    const place = str(s.place, 80) || DEFAULT_SETTINGS.place;
+    const clock = CLOCKS.indexOf(s.clock) >= 0 ? s.clock : DEFAULT_SETTINGS.clock;
+    let soon = Math.round(Number(s.soonMinutes));
+    if (!isFinite(soon) || soon < 5 || soon > 720) soon = DEFAULT_SETTINGS.soonMinutes;
+    return { place: place, clock: clock, soonMinutes: soon };
+  }
+
+  function normalizeAck(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const by = cleanName(raw.by);
+    const at = isoOrNull(raw.at);
+    if (!by || !at) return null;
+    const shiftId = str(raw.shiftId, 80);
+    return { by: by, at: at, shiftId: shiftId || null };
+  }
+
+  function normalizeHistory(raw) {
+    if (!Array.isArray(raw)) return [];
+    const out = [];
+    raw.forEach(function (h) {
+      if (!h || typeof h !== 'object') return;
+      const at = isoOrNull(h.at);
+      const did = str(h.did, 30);
+      if (!at || !did) return;
+      out.push({ at: at, by: cleanName(h.by), did: did, note: str(h.note, 200) });
+    });
+    return out.slice(-MAX_HISTORY);
+  }
+
+  /** Clean up one entry. Returns null when there is nothing worth keeping. */
+  function normalizeEntry(raw, now) {
+    if (!raw || typeof raw !== 'object') return null;
+    const text = str(raw.text, MAX_TEXT);
+    if (!text) return null;
+    const status = STATUSES.indexOf(raw.status) >= 0 ? raw.status : 'open';
+    const priority = PRIORITIES.indexOf(raw.priority) >= 0 ? raw.priority : 'normal';
+    const createdAt = isoOrNull(raw.createdAt) || isoOrNull(raw.updatedAt) || isoOrNull(raw.doneAt) || nowDate(now).toISOString();
+    const updatedAt = isoOrNull(raw.updatedAt) || createdAt;
+    return {
+      id: str(raw.id, 80) || uid(now),
+      text: text,
+      status: status,
+      priority: priority,
+      owner: cleanName(raw.owner),
+      waitingOn: status === 'waiting' ? cleanName(raw.waitingOn) : '',
+      due: isoOrNull(raw.due),
+      createdAt: createdAt,
+      createdBy: cleanName(raw.createdBy),
+      updatedAt: updatedAt,
+      ack: normalizeAck(raw.ack),
+      doneAt: status === 'done' ? (isoOrNull(raw.doneAt) || updatedAt) : null,
+      doneBy: status === 'done' ? cleanName(raw.doneBy) : '',
+      history: normalizeHistory(raw.history)
+    };
+  }
+
+  function normalizeShift(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const by = cleanName(raw.by);
+    const startedAt = isoOrNull(raw.startedAt);
+    if (!by || !startedAt) return null;
+    return {
+      id: str(raw.id, 80) || 'shift-' + ms(startedAt).toString(36),
+      name: str(raw.name, 40) || 'Shift',
+      by: by,
+      startedAt: startedAt
+    };
+  }
+
+  function count(v) {
+    const n = Math.round(Number(v));
+    return isFinite(n) && n > 0 ? n : 0;
+  }
+
+  function normalizeShiftRecord(raw) {
+    const s = normalizeShift(raw);
+    if (!s) return null;
+    const c = raw.counts && typeof raw.counts === 'object' ? raw.counts : {};
+    s.endedAt = isoOrNull(raw.endedAt) || s.startedAt;
+    s.handedTo = cleanName(raw.handedTo);
+    s.counts = { open: count(c.open), waiting: count(c.waiting), done: count(c.done), notAcked: count(c.notAcked) };
+    return s;
+  }
+
+  /**
+   * Turn anything (a fresh object, something read from storage, a restored
+   * backup) into a well-formed state. Safe to call twice.
+   */
+  function normalizeState(raw, now) {
+    const s = raw && typeof raw === 'object' ? raw : {};
+    const seen = Object.create(null);
+    const entries = [];
+    (Array.isArray(s.entries) ? s.entries : []).forEach(function (r) {
+      const e = normalizeEntry(r, now);
+      if (!e || seen[e.id]) return;
+      seen[e.id] = true;
+      entries.push(e);
+    });
+    const shifts = (Array.isArray(s.shifts) ? s.shifts : [])
+      .map(normalizeShiftRecord)
+      .filter(Boolean)
+      .slice(0, MAX_SHIFTS);
+    return {
+      format: FORMAT,
+      settings: normalizeSettings(s.settings),
+      shift: normalizeShift(s.shift),
+      shifts: shifts,
+      entries: entries
+    };
+  }
+
+  function emptyState(settings) {
+    return normalizeState({ settings: settings || {} });
+  }
+
+  function updateSettings(state, patch) {
+    const next = clone(state);
+    next.settings = normalizeSettings(Object.assign({}, state.settings, patch || {}));
+    return next;
+  }
+
+  // ------------------------------------------------------------ lookups
+
+  function indexOfEntry(state, id) {
+    for (let i = 0; i < state.entries.length; i++) if (state.entries[i].id === id) return i;
+    return -1;
+  }
+
+  function getEntry(state, id) {
+    const i = indexOfEntry(state, id);
+    if (i < 0) throw new Error('That entry is gone. It may have been deleted.');
+    return state.entries[i];
+  }
+
+  function actor(state, by) {
+    const b = cleanName(by);
+    if (b) return b;
+    return state.shift ? state.shift.by : '';
+  }
+
+  function log(e, at, by, did, note) {
+    e.history.push({ at: at, by: by, did: did, note: note || '' });
+    if (e.history.length > MAX_HISTORY) e.history.splice(0, e.history.length - MAX_HISTORY);
+  }
+
+  /** True when the current shift has said "I've got it" to this entry. */
+  function isAcked(e, state) {
+    return !!(state.shift && e.ack && e.ack.shiftId === state.shift.id);
+  }
+
+  /** True when the entry was already in the log before the current shift began. */
+  function carriedIn(e, state) {
+    return !!state.shift && ms(e.createdAt) < ms(state.shift.startedAt);
+  }
+
+  /** Open or waiting, handed over from an earlier shift, and not yet acknowledged. */
+  function needsAck(e, state) {
+    return (e.status === 'open' || e.status === 'waiting') && carriedIn(e, state) && !isAcked(e, state);
+  }
+
+  /** How the handover is going for the current shift. */
+  function handoverStatus(state) {
+    if (!state.shift) return { handed: 0, acked: 0, left: 0, from: '' };
+    const handed = state.entries.filter(function (e) {
+      return (e.status === 'open' || e.status === 'waiting') && carriedIn(e, state);
+    });
+    const acked = handed.filter(function (e) { return isAcked(e, state); }).length;
+    const last = state.shifts[0];
+    const from = last && last.handedTo && last.handedTo.toLowerCase() === state.shift.by.toLowerCase() ? last.by : '';
+    return { handed: handed.length, acked: acked, left: handed.length - acked, from: from };
+  }
+
+  // Touching an item you were handed counts as picking it up.
+  function implicitAck(state, e, at, by) {
+    if (by && needsAck(e, state)) {
+      e.ack = { by: by, at: at, shiftId: state.shift.id };
+      if (!e.owner) e.owner = by;
+    }
+  }
+
+  // ------------------------------------------------------------ changes
+
+  function addEntry(state, input, now, opts) {
+    opts = opts || {};
+    input = input || {};
+    const t = nowDate(now);
+    const at = t.toISOString();
+    const text = str(input.text, MAX_TEXT);
+    if (!text) throw new Error('Write what the next person needs to know.');
+    const status = input.status || 'open';
+    if (STATUSES.indexOf(status) < 0) throw new Error('Unknown status: ' + status);
+    const priority = input.priority || 'normal';
+    if (PRIORITIES.indexOf(priority) < 0) throw new Error('Unknown priority: ' + priority);
+    const waitingOn = status === 'waiting' ? cleanName(input.waitingOn) : '';
+    if (status === 'waiting' && !waitingOn) throw new Error('Say who or what it is waiting on.');
+    const by = actor(state, input.by);
+    const next = clone(state);
+    const e = {
+      id: opts.id || uid(t),
+      text: text,
+      status: status,
+      priority: priority,
+      owner: cleanName(input.owner),
+      waitingOn: waitingOn,
+      due: isoOrNull(input.due),
+      createdAt: at,
+      createdBy: by,
+      updatedAt: at,
+      ack: null,
+      doneAt: status === 'done' ? at : null,
+      doneBy: status === 'done' ? by : '',
+      history: []
+    };
+    if (indexOfEntry(next, e.id) >= 0) throw new Error('An entry with that id already exists.');
+    log(e, at, by, status === 'done' ? 'logged' : 'added', status === 'waiting' ? 'waiting on ' + waitingOn : '');
+    next.entries.push(e);
+    return next;
+  }
+
+  /** Change text, owner, priority, due time or who it is waiting on. */
+  function updateEntry(state, id, patch, now, by) {
+    patch = patch || {};
+    const t = nowDate(now);
+    const at = t.toISOString();
+    const next = clone(state);
+    const e = getEntry(next, id);
+    const who = actor(next, by);
+    const changed = [];
+    if ('text' in patch) {
+      const text = str(patch.text, MAX_TEXT);
+      if (!text) throw new Error('Write what the next person needs to know.');
+      if (text !== e.text) { e.text = text; changed.push('text'); }
+    }
+    if ('priority' in patch) {
+      if (PRIORITIES.indexOf(patch.priority) < 0) throw new Error('Unknown priority: ' + patch.priority);
+      if (patch.priority !== e.priority) { e.priority = patch.priority; changed.push('priority'); }
+    }
+    if ('owner' in patch) {
+      const owner = cleanName(patch.owner);
+      if (owner !== e.owner) { e.owner = owner; changed.push('owner'); }
+    }
+    if ('due' in patch) {
+      const due = isoOrNull(patch.due);
+      if (due !== e.due) { e.due = due; changed.push('due time'); }
+    }
+    if ('waitingOn' in patch && e.status === 'waiting') {
+      const w = cleanName(patch.waitingOn);
+      if (!w) throw new Error('Say who or what it is waiting on.');
+      if (w !== e.waitingOn) { e.waitingOn = w; changed.push('waiting on'); }
+    }
+    if (!changed.length) return next;
+    e.updatedAt = at;
+    log(e, at, who, 'edited', changed.join(', '));
+    implicitAck(next, e, at, who);
+    return next;
+  }
+
+  /** Move an entry to Open, Waiting or Done. Waiting needs to know on whom. */
+  function moveEntry(state, id, to, now, opts) {
+    opts = opts || {};
+    if (STATUSES.indexOf(to) < 0) throw new Error('Unknown status: ' + to);
+    const t = nowDate(now);
+    const at = t.toISOString();
+    const next = clone(state);
+    const e = getEntry(next, id);
+    const by = actor(next, opts.by);
+    const from = e.status;
+    let waitingOn = '';
+    if (to === 'waiting') {
+      waitingOn = cleanName(opts.waitingOn) || e.waitingOn;
+      if (!waitingOn) throw new Error('Say who or what it is waiting on.');
+    }
+    if (from === to && waitingOn === e.waitingOn) return next;
+    implicitAck(next, e, at, by);
+    e.status = to;
+    e.waitingOn = waitingOn;
+    if (to === 'done') {
+      e.doneAt = at;
+      e.doneBy = by;
+    } else {
+      e.doneAt = null;
+      e.doneBy = '';
+    }
+    e.updatedAt = at;
+    log(e, at, by, 'moved', from + ' to ' + to + (waitingOn ? ' (' + waitingOn + ')' : ''));
+    return next;
+  }
+
+  /** The incoming person's one-tap "I've got it". */
+  function acknowledge(state, id, now, by) {
+    const t = nowDate(now);
+    const at = t.toISOString();
+    if (!state.shift) throw new Error('Start a shift first, so it is clear who has it.');
+    const next = clone(state);
+    const e = getEntry(next, id);
+    if (e.status === 'done') throw new Error('That one is already done.');
+    if (isAcked(e, next)) return next;
+    const who = actor(next, by);
+    e.ack = { by: who, at: at, shiftId: next.shift.id };
+    if (!e.owner) e.owner = who;
+    log(e, at, who, 'acknowledged', '');
+    return next;
+  }
+
+  /** "I've got it" for everything handed over that is still waiting for one. */
+  function acknowledgeAll(state, now, by) {
+    if (!state.shift) throw new Error('Start a shift first, so it is clear who has it.');
+    let next = state;
+    state.entries.forEach(function (e) {
+      if (needsAck(e, state)) next = acknowledge(next, e.id, now, by);
+    });
+    return next === state ? clone(state) : next;
+  }
+
+  function removeEntry(state, id) {
+    const next = clone(state);
+    const i = indexOfEntry(next, id);
+    if (i < 0) throw new Error('That entry is gone. It may have been deleted.');
+    next.entries.splice(i, 1);
+    return next;
+  }
+
+  // ------------------------------------------------------------- shifts
+
+  /** Close the current shift and keep a short record of how it ended. */
+  function endShift(state, now, opts) {
+    opts = opts || {};
+    if (!state.shift) return clone(state);
+    const t = nowDate(now);
+    const m = summaryModel(state, t);
+    const next = clone(state);
+    next.shifts.unshift({
+      id: state.shift.id,
+      name: state.shift.name,
+      by: state.shift.by,
+      startedAt: state.shift.startedAt,
+      endedAt: t.toISOString(),
+      handedTo: cleanName(opts.handedTo),
+      counts: {
+        open: m.counts.open,
+        waiting: m.counts.waiting,
+        done: m.counts.doneThisShift,
+        notAcked: m.counts.notAcked
+      }
+    });
+    next.shifts = next.shifts.slice(0, MAX_SHIFTS);
+    next.shift = null;
+    return next;
+  }
+
+  /** Start a shift. If one is running, it is closed and handed to the new person. */
+  function startShift(state, input, now, opts) {
+    input = input || {};
+    opts = opts || {};
+    const t = nowDate(now);
+    const by = cleanName(input.by);
+    if (!by) throw new Error('Who is starting the shift?');
+    const next = state.shift ? endShift(state, t, { handedTo: by }) : clone(state);
+    next.shift = {
+      id: opts.id || 'shift-' + uid(t),
+      name: str(input.name, 40) || 'Shift',
+      by: by,
+      startedAt: t.toISOString()
+    };
+    return next;
+  }
+
+  // ------------------------------------------------------- time and dues
+
+  const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  function fmtTime(v, clock) {
+    const d = toDate(v);
+    if (!d) return '';
+    const h = d.getHours();
+    const mm = pad(d.getMinutes());
+    if (clock === '24h') return pad(h) + ':' + mm;
+    return (h % 12 || 12) + ':' + mm + ' ' + (h < 12 ? 'am' : 'pm');
+  }
+
+  function startOfDay(d) {
+    const x = new Date(d.getTime());
+    x.setHours(0, 0, 0, 0);
+    return x;
+  }
+
+  function dayDiff(a, b) {
+    return Math.round((startOfDay(a).getTime() - startOfDay(b).getTime()) / DAY_MS);
+  }
+
+  function fmtDay(v, now) {
+    const d = toDate(v);
+    if (!d) return '';
+    const diff = dayDiff(d, nowDate(now));
+    if (diff === 0) return 'today';
+    if (diff === 1) return 'tomorrow';
+    if (diff === -1) return 'yesterday';
+    if (diff > 1 && diff < 7) return DAYS[d.getDay()];
+    return MONTHS[d.getMonth()] + ' ' + d.getDate();
+  }
+
+  /** "today 2:30 pm", "tomorrow 7:00 am", "Fri 9:00 am", "Dec 3 9:00 am". */
+  function fmtWhen(v, now, clock) {
+    const d = toDate(v);
+    if (!d) return '';
+    return fmtDay(d, now) + ' ' + fmtTime(d, clock);
+  }
+
+  /** "Thu Nov 26, 6:05 am": a full stamp for the printed summary. */
+  function fmtStamp(v, clock) {
+    const d = toDate(v);
+    if (!d) return '';
+    return DAYS[d.getDay()] + ' ' + MONTHS[d.getMonth()] + ' ' + d.getDate() + ', ' + fmtTime(d, clock);
+  }
+
+  /** "5 min", "1 h 20 min", "2 h", "3 days". */
+  function fmtSpan(minutes) {
+    const m = Math.max(0, Math.round(minutes));
+    if (m < 60) return m + ' min';
+    if (m < 48 * 60) {
+      const h = Math.floor(m / 60);
+      const r = m % 60;
+      return h + ' h' + (r ? ' ' + r + ' min' : '');
+    }
+    return Math.round(m / 1440) + ' days';
+  }
+
+  function dateStamp(now) {
+    const d = nowDate(now);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  /** 'overdue', 'soon' (within the "due soon" window), 'later' or 'none'. */
+  function dueState(e, now, soonMinutes) {
+    if (!e.due || e.status === 'done') return 'none';
+    const diff = ms(e.due) - nowDate(now).getTime();
+    if (isNaN(diff)) return 'none';
+    if (diff < 0) return 'overdue';
+    const soon = soonMinutes === undefined || soonMinutes === null ? DEFAULT_SETTINGS.soonMinutes : soonMinutes;
+    if (diff <= soon * MINUTE) return 'soon';
+    return 'later';
+  }
+
+  function dueText(e, now, settings) {
+    settings = settings || DEFAULT_SETTINGS;
+    const s = dueState(e, now, settings.soonMinutes);
+    if (s === 'none') return '';
+    const diff = (ms(e.due) - nowDate(now).getTime()) / MINUTE;
+    if (s === 'overdue') return 'overdue ' + fmtSpan(Math.max(1, -diff));
+    if (s === 'soon') return diff < 1 ? 'due now' : 'due in ' + fmtSpan(diff);
+    return 'due ' + fmtWhen(e.due, now, settings.clock);
+  }
+
+  /** How long an open or waiting item has been sitting: "open 9 h". */
+  function ageText(e, now) {
+    if (e.status === 'done') return '';
+    const mins = (nowDate(now).getTime() - ms(e.createdAt)) / MINUTE;
+    if (!(mins >= 1)) return '';
+    return e.status + ' ' + fmtSpan(mins);
+  }
+
+  /** Parse "9am", "9:30 pm", "14:30", "noon", "midnight". Bare "9" is too vague and returns null. */
+  function parseClock(s) {
+    const t = String(s === null || s === undefined ? '' : s).trim().toLowerCase().replace(/\./g, '');
+    if (t === 'noon') return { h: 12, m: 0 };
+    if (t === 'midnight') return { h: 0, m: 0 };
+    const m = /^(\d{1,2})(?::(\d{2}))?\s*(am|pm|a|p)?$/.exec(t);
+    if (!m) return null;
+    let h = Number(m[1]);
+    const mi = m[2] ? Number(m[2]) : 0;
+    if (mi > 59) return null;
+    if (m[3]) {
+      if (h < 1 || h > 12) return null;
+      h = h % 12 + (m[3].charAt(0) === 'p' ? 12 : 0);
+    } else {
+      if (!m[2] || h > 23) return null;
+    }
+    return { h: h, m: mi };
+  }
+
+  /** The next time the clock reads h:m, today or tomorrow. */
+  function nextAt(now, h, m) {
+    const t = nowDate(now);
+    const d = new Date(t.getTime());
+    d.setHours(h, m, 0, 0);
+    if (d.getTime() <= t.getTime()) d.setDate(d.getDate() + 1);
+    return d;
+  }
+
+  /** "2026-11-26T14:30" (what a datetime-local input holds) <-> ISO. */
+  function toLocalInput(v) {
+    const d = toDate(v);
+    if (!d) return '';
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  function fromLocalInput(s) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(String(s || ''));
+    if (!m) return null;
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]));
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  }
+
+  // ----------------------------------------------------- quick shorthand
+
+  /**
+   * Read the shortcuts people type on a phone:
+   *   @Name            owner
+   *   !  or  !high     high priority (also !low, !normal)
+   *   by 7am / by 14:30 / by noon      due at the next such time
+   *   in 30m / in 2h                   due that long from now
+   *   waiting on Gus / waiting for the landlord   files it under Waiting
+   * The shortcut words are taken out of the text.
+   */
+  function quickParse(raw, now) {
+    const t0 = nowDate(now);
+    const out = { text: '', owner: '', priority: null, status: null, waitingOn: '', due: null };
+    const original = str(raw, MAX_TEXT);
+    if (!original) return out;
+    let s = original;
+
+    s = s.replace(/(^|[ \t])(?:waiting|wait)[ \t]+(?:on|for)[ \t]+@?((?:(?:the|a|an)[ \t]+)?[A-Za-z0-9][\w'&-]*)/i, function (all, pre, who) {
+      out.status = 'waiting';
+      out.waitingOn = cleanName(who.replace(/_/g, ' '));
+      return pre;
+    });
+
+    s = s.replace(/(^|[ \t])@([A-Za-z][\w'-]*)/, function (all, pre, who) {
+      out.owner = cleanName(who.replace(/_/g, ' '));
+      return pre;
+    });
+
+    s = s.replace(/(^|[ \t])!(high|urgent|low|normal)\b/i, function (all, pre, p) {
+      p = p.toLowerCase();
+      out.priority = p === 'urgent' ? 'high' : p;
+      return pre;
+    });
+    if (!out.priority) {
+      s = s.replace(/(^|[ \t])!{1,3}(?=[ \t]|$)/, function (all, pre) {
+        out.priority = 'high';
+        return pre;
+      });
+    }
+
+    s = s.replace(/(^|[ \t])by[ \t]+(noon|midnight|\d{1,2}(?::\d{2})?[ \t]*(?:a\.m\.|p\.m\.|am|pm|a|p)?)(?=$|[\s.,;!?)])/i, function (all, pre, when) {
+      if (out.due) return all;
+      const c = parseClock(when);
+      if (!c) return all;
+      out.due = nextAt(t0, c.h, c.m).toISOString();
+      return pre;
+    });
+    if (!out.due) {
+      s = s.replace(/(^|[ \t])in[ \t]+(\d{1,3})[ \t]*(minutes|minute|mins|min|m|hours|hour|hrs|hr|h)(?=$|[\s.,;!?)])/i, function (all, pre, n, unit) {
+        const mins = /^h/i.test(unit) ? Number(n) * 60 : Number(n);
+        if (!mins) return all;
+        out.due = addMinutes(t0, mins).toISOString();
+        return pre;
+      });
+    }
+
+    s = s.replace(/[ \t]{2,}/g, ' ')
+      .replace(/[ \t]+([.,;:!?])/g, '$1')
+      .replace(/[,;:]+(?=[.!?,;:])/g, '')
+      .replace(/^[ \t,;:.–—-]+/, '')
+      .replace(/[ \t,;:–—-]+$/, '')
+      .trim();
+    out.text = s || original;
+    return out;
+  }
+
+  /**
+   * Combine the add form with the shorthand found in the text. Anything the
+   * person picked on the form wins; the shorthand fills the gaps.
+   */
+  function mergeQuick(form, parsed) {
+    form = form || {};
+    parsed = parsed || {};
+    const formStatus = form.status || 'open';
+    const formPriority = form.priority || 'normal';
+    return {
+      text: parsed.text || str(form.text, MAX_TEXT),
+      status: formStatus !== 'open' ? formStatus : (parsed.status || 'open'),
+      priority: formPriority !== 'normal' ? formPriority : (parsed.priority || 'normal'),
+      owner: cleanName(form.owner) || parsed.owner || '',
+      waitingOn: cleanName(form.waitingOn) || parsed.waitingOn || '',
+      due: isoOrNull(form.due) || parsed.due || null
+    };
+  }
+
+  // -------------------------------------------------------------- sorting
+
+  /** Overdue first, then priority, then due time, then oldest first. */
+  function byUrgency(now) {
+    const t = nowDate(now).getTime();
+    return function (a, b) {
+      const ad = ms(a.due);
+      const bd = ms(b.due);
+      const ao = !isNaN(ad) && ad < t ? 0 : 1;
+      const bo = !isNaN(bd) && bd < t ? 0 : 1;
+      if (ao !== bo) return ao - bo;
+      const ap = PRIORITY_RANK[a.priority];
+      const bp = PRIORITY_RANK[b.priority];
+      if (ap !== bp) return ap - bp;
+      const ax = isNaN(ad) ? Infinity : ad;
+      const bx = isNaN(bd) ? Infinity : bd;
+      if (ax !== bx) return ax < bx ? -1 : 1;
+      const ac = ms(a.createdAt);
+      const bc = ms(b.createdAt);
+      if (ac !== bc) return ac < bc ? -1 : 1;
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    };
+  }
+
+  /** Most recently finished first. */
+  function byDoneDesc(a, b) {
+    const ad = ms(a.doneAt);
+    const bd = ms(b.doneAt);
+    if (ad !== bd) return ad > bd ? -1 : 1;
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+  }
+
+  function listStatus(state, status, now) {
+    const items = state.entries.filter(function (e) { return e.status === status; });
+    items.sort(status === 'done' ? byDoneDesc : byUrgency(now));
+    return items;
+  }
+
+  /**
+   * What the next person must do first: open items that are overdue, due
+   * soon or high priority, plus waiting items that are overdue (time to chase).
+   */
+  function doFirst(state, now, limit) {
+    const soon = state.settings.soonMinutes;
+    const picks = state.entries.filter(function (e) {
+      const d = dueState(e, now, soon);
+      if (e.status === 'open') return d === 'overdue' || d === 'soon' || e.priority === 'high';
+      if (e.status === 'waiting') return d === 'overdue';
+      return false;
+    });
+    picks.sort(byUrgency(now));
+    return limit ? picks.slice(0, limit) : picks;
+  }
+
+  /** Waiting items grouped by who or what they wait on, groups A to Z. */
+  function waitingGroups(state, now, items) {
+    const list = items || listStatus(state, 'waiting', now);
+    const groups = [];
+    const byKey = Object.create(null);
+    list.forEach(function (e) {
+      const who = e.waitingOn || 'Not set';
+      const key = who.toLowerCase();
+      if (!byKey[key]) {
+        byKey[key] = { who: who, entries: [] };
+        groups.push(byKey[key]);
+      }
+      byKey[key].entries.push(e);
+    });
+    groups.sort(function (a, b) {
+      if (a.who === 'Not set') return 1;
+      if (b.who === 'Not set') return -1;
+      const x = a.who.toLowerCase();
+      const y = b.who.toLowerCase();
+      return x < y ? -1 : x > y ? 1 : 0;
+    });
+    return groups;
+  }
+
+  function counts(state) {
+    const c = { open: 0, waiting: 0, done: 0 };
+    state.entries.forEach(function (e) { c[e.status] += 1; });
+    return c;
+  }
+
+  /** Done during the current shift, oldest first. With no shift: the last 24 hours. */
+  function doneInShift(state, now) {
+    const t = nowDate(now).getTime();
+    const from = state.shift ? ms(state.shift.startedAt) : t - DAY_MS;
+    return state.entries
+      .filter(function (e) { return e.status === 'done' && ms(e.doneAt) >= from; })
+      .sort(function (a, b) { return byDoneDesc(b, a); });
+  }
+
+  function people(state) {
+    const seen = Object.create(null);
+    const out = [];
+    function add(n) {
+      n = cleanName(n);
+      if (!n || seen[n.toLowerCase()]) return;
+      seen[n.toLowerCase()] = true;
+      out.push(n);
+    }
+    if (state.shift) add(state.shift.by);
+    state.shifts.forEach(function (s) { add(s.by); add(s.handedTo); });
+    state.entries.forEach(function (e) {
+      add(e.owner); add(e.createdBy); add(e.waitingOn); add(e.doneBy);
+      if (e.ack) add(e.ack.by);
+    });
+    return out.sort(function (a, b) { return a.toLowerCase() < b.toLowerCase() ? -1 : 1; });
+  }
+
+  function shiftNames(state) {
+    const seen = Object.create(null);
+    const out = [];
+    [state.shift ? state.shift.name : ''].concat(state.shifts.map(function (s) { return s.name; }), SHIFT_NAMES)
+      .forEach(function (n) {
+        n = str(n, 40);
+        if (!n || seen[n.toLowerCase()]) return;
+        seen[n.toLowerCase()] = true;
+        out.push(n);
+      });
+    return out;
+  }
+
+  // -------------------------------------------------------------- summary
+
+  /** Everything the end-of-shift summary shows, with no item listed twice. */
+  function summaryModel(state, now) {
+    const t = nowDate(now);
+    const first = doFirst(state, t, 0);
+    const isFirst = Object.create(null);
+    first.forEach(function (e) { isFirst[e.id] = true; });
+    const open = listStatus(state, 'open', t);
+    const waiting = listStatus(state, 'waiting', t);
+    const alsoOpen = open.filter(function (e) { return !isFirst[e.id]; });
+    const waitingRest = waiting.filter(function (e) { return !isFirst[e.id]; });
+    const done = doneInShift(state, t);
+    const notAcked = state.entries.filter(function (e) { return needsAck(e, state); }).sort(byUrgency(t));
+    return {
+      place: state.settings.place,
+      clock: state.settings.clock,
+      shift: state.shift ? clone(state.shift) : null,
+      madeAt: t.toISOString(),
+      doFirst: first,
+      alsoOpen: alsoOpen,
+      waiting: waitingGroups(state, t, waitingRest),
+      done: done,
+      notAcked: notAcked,
+      counts: {
+        open: open.length,
+        waiting: waiting.length,
+        doneThisShift: done.length,
+        notAcked: notAcked.length
+      }
+    };
+  }
+
+  function oneLine(text) {
+    return String(text).replace(/\s*\n+\s*/g, ' / ');
+  }
+
+  /** One entry as a line of the summary: "[HIGH] Text (owner Nadia, due in 25 min)". */
+  function itemLine(e, now, settings, grouped) {
+    const bits = [];
+    if (e.status === 'waiting' && !grouped) bits.push('waiting on ' + (e.waitingOn || 'someone'));
+    if (e.owner) bits.push('owner ' + e.owner);
+    const due = dueText(e, now, settings);
+    if (due) bits.push(due);
+    const tag = e.priority === 'high' ? '[HIGH] ' : e.priority === 'low' ? '[low] ' : '';
+    return tag + oneLine(e.text) + (bits.length ? ' (' + bits.join(', ') + ')' : '');
+  }
+
+  /** The end-of-shift summary as plain text, ready to print, paste or text. */
+  function summaryText(state, now) {
+    const t = nowDate(now);
+    const m = summaryModel(state, t);
+    const st = state.settings;
+    const L = [];
+    L.push('SHIFT HANDOFF: ' + m.place);
+    if (m.shift) L.push(m.shift.name + ' shift, ' + m.shift.by + ', since ' + fmtStamp(m.shift.startedAt, st.clock));
+    else L.push('No shift running');
+    L.push('Made ' + fmtStamp(t, st.clock));
+    L.push(m.counts.open + ' open, ' + m.counts.waiting + ' waiting, ' + m.counts.doneThisShift + ' done this shift');
+    L.push('');
+
+    L.push('DO FIRST');
+    if (!m.doFirst.length) L.push('- Nothing urgent.');
+    m.doFirst.forEach(function (e, i) {
+      L.push((i + 1) + '. ' + (e.status === 'waiting' ? 'Chase: ' : '') + itemLine(e, t, st, false));
+    });
+    L.push('');
+
+    L.push('ALSO OPEN (' + m.alsoOpen.length + ')');
+    if (!m.alsoOpen.length) L.push('- Nothing else open.');
+    m.alsoOpen.forEach(function (e) { L.push('- ' + itemLine(e, t, st, false)); });
+    L.push('');
+
+    const waitingCount = m.waiting.reduce(function (n, g) { return n + g.entries.length; }, 0);
+    L.push('WAITING ON OTHERS (' + waitingCount + ')');
+    if (!waitingCount) L.push('- Nothing waiting.');
+    m.waiting.forEach(function (g) {
+      L.push('On ' + g.who + ':');
+      g.entries.forEach(function (e) { L.push('  - ' + itemLine(e, t, st, true)); });
+    });
+    L.push('');
+
+    L.push('DONE THIS SHIFT (' + m.done.length + ')');
+    if (!m.done.length) L.push('- Nothing logged as done yet.');
+    m.done.forEach(function (e) {
+      L.push('- ' + fmtTime(e.doneAt, st.clock) + '  ' + oneLine(e.text) + (e.doneBy ? ' (' + e.doneBy + ')' : ''));
+    });
+
+    if (m.notAcked.length) {
+      L.push('');
+      L.push('HANDED OVER, NOT ACKNOWLEDGED YET (' + m.notAcked.length + ')');
+      m.notAcked.forEach(function (e) { L.push('- ' + itemLine(e, t, st, false)); });
+    }
+    return L.join('\n') + '\n';
+  }
+
+  // ------------------------------------------------------------------ CSV
+
+  const CSV_COLUMNS = Object.freeze([
+    'id', 'status', 'priority', 'text', 'owner', 'waiting_on', 'due',
+    'created_at', 'created_by', 'acknowledged_by', 'acknowledged_at', 'done_at', 'done_by'
+  ]);
+
+  // A cell that starts with = + - @ could run as a formula in a spreadsheet.
+  // A leading apostrophe stops that; the importer takes it off again.
+  const RISKY = /^[=+\-@\t\r]/;
+  const GUARDED = /^'(?=[=+\-@\t\r]|'[=+\-@\t\r])/;
+
+  function csvCell(v) {
+    let s = v === null || v === undefined ? '' : String(v);
+    if (RISKY.test(s) || /^'[=+\-@\t\r]/.test(s)) s = "'" + s;
+    if (/[",\r\n]/.test(s) || /^\s|\s$/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+
+  function unguard(s) {
+    return GUARDED.test(s) ? s.slice(1) : s;
+  }
+
+  function toCSV(state) {
+    const rows = [CSV_COLUMNS.join(',')];
+    state.entries.forEach(function (e) {
+      rows.push([
+        e.id, e.status, e.priority, e.text, e.owner, e.waitingOn, e.due || '',
+        e.createdAt, e.createdBy, e.ack ? e.ack.by : '', e.ack ? e.ack.at : '', e.doneAt || '', e.doneBy
+      ].map(csvCell).join(','));
+    });
+    return '﻿' + rows.join('\r\n') + '\r\n';
+  }
+
+  /** A small RFC 4180 reader: quoted cells, doubled quotes, CRLF or LF. */
+  function parseCSV(text) {
+    let s = String(text === null || text === undefined ? '' : text);
+    if (s.charCodeAt(0) === 0xFEFF) s = s.slice(1);
+    const rows = [];
+    let row = [];
+    let cell = '';
+    let quoted = false;
+    let started = false;
+    let i = 0;
+    while (i < s.length) {
+      const c = s.charAt(i);
+      if (quoted) {
+        if (c === '"') {
+          if (s.charAt(i + 1) === '"') { cell += '"'; i += 2; continue; }
+          quoted = false;
+          i += 1;
+          continue;
+        }
+        cell += c;
+        i += 1;
+        continue;
+      }
+      if (c === '"' && !started) { quoted = true; started = true; i += 1; continue; }
+      if (c === ',') { row.push(cell); cell = ''; started = false; i += 1; continue; }
+      if (c === '\r' || c === '\n') {
+        row.push(cell);
+        rows.push(row);
+        row = [];
+        cell = '';
+        started = false;
+        i += c === '\r' && s.charAt(i + 1) === '\n' ? 2 : 1;
+        continue;
+      }
+      cell += c;
+      started = true;
+      i += 1;
+    }
+    if (cell !== '' || started || row.length) {
+      row.push(cell);
+      rows.push(row);
+    }
+    return rows.filter(function (r) { return !(r.length === 1 && r[0] === ''); });
+  }
+
+  /** Read entries back from a CSV made by toCSV (or a hand-made one with a "text" column). */
+  function entriesFromCSV(text, now) {
+    const rows = parseCSV(text);
+    if (!rows.length) throw new Error('That CSV file is empty.');
+    const head = rows[0].map(function (h) { return unguard(h).trim().toLowerCase().replace(/\s+/g, '_'); });
+    if (head.indexOf('text') < 0) throw new Error('That CSV has no "text" column.');
+    const out = [];
+    rows.slice(1).forEach(function (r) {
+      function get(k) {
+        const i = head.indexOf(k);
+        return i >= 0 && i < r.length ? unguard(r[i]) : '';
+      }
+      const ackBy = get('acknowledged_by');
+      const ackAt = get('acknowledged_at');
+      const e = normalizeEntry({
+        id: get('id'),
+        text: get('text'),
+        status: get('status').trim().toLowerCase(),
+        priority: get('priority').trim().toLowerCase(),
+        owner: get('owner'),
+        waitingOn: get('waiting_on'),
+        due: get('due') || null,
+        createdAt: get('created_at'),
+        createdBy: get('created_by'),
+        ack: ackBy && ackAt ? { by: ackBy, at: ackAt, shiftId: null } : null,
+        doneAt: get('done_at'),
+        doneBy: get('done_by')
+      }, now);
+      if (e) out.push(e);
+    });
+    return out;
+  }
+
+  /** Add entries from a CSV. Rows whose id is already in the log are skipped. */
+  function importCSV(state, text, now) {
+    const incoming = entriesFromCSV(text, now);
+    const next = clone(state);
+    let added = 0;
+    let skipped = 0;
+    incoming.forEach(function (e) {
+      if (indexOfEntry(next, e.id) >= 0) { skipped += 1; return; }
+      next.entries.push(e);
+      added += 1;
+    });
+    return { state: next, added: added, skipped: skipped };
+  }
+
+  // --------------------------------------------------------------- backup
+
+  function toBackup(state, now) {
+    return JSON.stringify({
+      app: APP_ID,
+      format: FORMAT,
+      exportedAt: nowDate(now).toISOString(),
+      data: normalizeState(state, now)
+    }, null, 2) + '\n';
+  }
+
+  function fromBackup(text, now) {
+    let obj;
+    try {
+      obj = JSON.parse(String(text).replace(/^﻿/, ''));
+    } catch (err) {
+      throw new Error('That file is not a Shift Handoff backup (it is not valid JSON).');
+    }
+    if (!obj || typeof obj !== 'object' || obj.app !== APP_ID || !obj.data || typeof obj.data !== 'object') {
+      throw new Error('That file is not a Shift Handoff backup.');
+    }
+    if (typeof obj.format !== 'number' || obj.format > FORMAT) {
+      throw new Error('That backup was made by a newer version of this page. Update the page, then try again.');
+    }
+    return normalizeState(obj.data, now);
+  }
+
+  return {
+    APP_ID: APP_ID,
+    FORMAT: FORMAT,
+    STATUSES: STATUSES,
+    PRIORITIES: PRIORITIES,
+    DEFAULT_SETTINGS: DEFAULT_SETTINGS,
+    CSV_COLUMNS: CSV_COLUMNS,
+    MAX_TEXT: MAX_TEXT,
+    // state
+    emptyState: emptyState,
+    normalizeState: normalizeState,
+    normalizeEntry: normalizeEntry,
+    updateSettings: updateSettings,
+    getEntry: getEntry,
+    // changes
+    addEntry: addEntry,
+    updateEntry: updateEntry,
+    moveEntry: moveEntry,
+    acknowledge: acknowledge,
+    acknowledgeAll: acknowledgeAll,
+    removeEntry: removeEntry,
+    startShift: startShift,
+    endShift: endShift,
+    // acknowledgement
+    isAcked: isAcked,
+    carriedIn: carriedIn,
+    needsAck: needsAck,
+    handoverStatus: handoverStatus,
+    // time
+    addMinutes: addMinutes,
+    dueState: dueState,
+    dueText: dueText,
+    ageText: ageText,
+    fmtTime: fmtTime,
+    fmtDay: fmtDay,
+    fmtWhen: fmtWhen,
+    fmtStamp: fmtStamp,
+    fmtSpan: fmtSpan,
+    dateStamp: dateStamp,
+    parseClock: parseClock,
+    nextAt: nextAt,
+    toLocalInput: toLocalInput,
+    fromLocalInput: fromLocalInput,
+    // shorthand
+    quickParse: quickParse,
+    mergeQuick: mergeQuick,
+    // lists
+    byUrgency: byUrgency,
+    listStatus: listStatus,
+    doFirst: doFirst,
+    waitingGroups: waitingGroups,
+    counts: counts,
+    doneInShift: doneInShift,
+    people: people,
+    shiftNames: shiftNames,
+    // summary
+    summaryModel: summaryModel,
+    summaryText: summaryText,
+    itemLine: itemLine,
+    // files
+    toCSV: toCSV,
+    parseCSV: parseCSV,
+    entriesFromCSV: entriesFromCSV,
+    importCSV: importCSV,
+    toBackup: toBackup,
+    fromBackup: fromBackup
+  };
+}));
+</script>
+<script>
+/*
+ * Shift Handoff: sample log.
+ *
+ * A made-up volunteer station, "Pinecone Community Radio", partway through
+ * its overnight shift. Every station, business and person here is invented.
+ * Times are built around `now`, so the sample always looks current.
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./engine.js'));
+  else root.ShiftSample = factory(root.ShiftEngine);
+}(typeof globalThis !== 'undefined' ? globalThis : this, function (E) {
+  'use strict';
+
+  const SAMPLE_PLACE = 'Pinecone Community Radio';
+
+  function makeSample(now) {
+    const t = now === undefined ? new Date() : new Date(new Date(now).getTime());
+    const at = function (minutes) {
+      const d = new Date(t.getTime() + minutes * 60000);
+      d.setSeconds(0, 0);
+      return d.toISOString();
+    };
+    const overnight = 'sample-shift-overnight';
+    const overnightStart = at(-470);
+    const lateStart = at(-830);
+    const ack = function (minutes) { return { by: 'Theo', at: at(minutes), shiftId: overnight }; };
+
+    const entries = [
+      {
+        id: 'sample-01', status: 'open', priority: 'high',
+        text: 'Weekly emergency alert test ran on automation overnight. Initial the paper log by the board and write in the time it aired.',
+        owner: '', due: at(25), createdAt: at(-200), createdBy: 'Theo'
+      },
+      {
+        id: 'sample-02', status: 'open', priority: 'high',
+        text: 'Sponsor spot for the Owl & Kettle Bakery has to air within the hour. It is in the carts folder as OWL-KETTLE-NOV.',
+        owner: 'Nadia', due: at(55), createdAt: at(-600), createdBy: 'Marisol', ack: ack(-460)
+      },
+      {
+        id: 'sample-03', status: 'open', priority: 'normal',
+        text: 'Gardening hour guest comes in this morning. Studio B needs the second mic plugged back in and a glass of water on the desk.',
+        owner: 'Priya', due: at(150), createdAt: at(-520), createdBy: 'Marisol'
+      },
+      {
+        id: 'sample-04', status: 'open', priority: 'normal',
+        text: 'Call back the listener asking where the Sunday jazz playlist went. Their number is on the yellow sticky note by the studio phone.',
+        owner: '', due: at(-40), createdAt: at(-700), createdBy: 'Marisol', ack: ack(-458)
+      },
+      {
+        id: 'sample-05', status: 'open', priority: 'low',
+        text: 'Green room coffee maker is leaking. Towel under it for now, please do not use it.',
+        owner: '', due: null, createdAt: at(-120), createdBy: 'Theo'
+      },
+      {
+        id: 'sample-06', status: 'waiting', priority: 'normal', waitingOn: 'Gus',
+        text: 'Studio A headphone amp, channel 3 crackles. Gus is bringing a spare on Saturday. Use channels 1 and 2 until then.',
+        owner: 'Theo', due: null, createdAt: at(-900), createdBy: 'Marisol', ack: ack(-455)
+      },
+      {
+        id: 'sample-07', status: 'waiting', priority: 'normal', waitingOn: 'Programming committee',
+        text: 'Holiday schedule swap for Dec 24 needs a yes before it goes on the lobby board.',
+        owner: '', due: at(60 * 30), createdAt: at(-1500), createdBy: 'Marisol'
+      },
+      {
+        id: 'sample-08', status: 'waiting', priority: 'low', waitingOn: 'Building manager',
+        text: 'Spare key for the transmitter shed. Building manager said it would be in the drop box by now.',
+        owner: '', due: at(-180), createdAt: at(-3000), createdBy: 'Marisol'
+      },
+      {
+        id: 'sample-09', status: 'done', priority: 'high',
+        text: 'Silence alarm went off. Automation skipped a damaged file; restarted the playout computer and we were back on air in two minutes. File pulled from rotation.',
+        createdAt: at(-235), createdBy: 'Theo', doneAt: at(-233), doneBy: 'Theo'
+      },
+      {
+        id: 'sample-10', status: 'done', priority: 'normal',
+        text: 'Recorded three new station IDs with the volunteer tagline. Saved in the IDs folder, ready for the morning.',
+        createdAt: at(-300), createdBy: 'Theo', doneAt: at(-280), doneBy: 'Theo'
+      },
+      {
+        id: 'sample-11', status: 'done', priority: 'normal',
+        text: 'Locked the front door and checked the back gate after the late show crew left.',
+        createdAt: at(-462), createdBy: 'Theo', doneAt: at(-455), doneBy: 'Theo'
+      },
+      {
+        id: 'sample-12', status: 'done', priority: 'low',
+        text: 'Printed the December volunteer sign-in sheet. It is on the clipboard by the door.',
+        createdAt: at(-100), createdBy: 'Theo', doneAt: at(-90), doneBy: 'Theo'
+      },
+      {
+        id: 'sample-13', status: 'done', priority: 'normal',
+        text: 'Swapped the lobby speaker cable. Sound is clean again.',
+        createdAt: at(-640), createdBy: 'Marisol', doneAt: at(-610), doneBy: 'Marisol'
+      }
+    ];
+
+    entries.forEach(function (e) {
+      e.updatedAt = e.doneAt || e.createdAt;
+      e.history = [{ at: e.createdAt, by: e.createdBy, did: e.status === 'done' ? 'logged' : 'added', note: '' }];
+      if (e.ack) e.history.push({ at: e.ack.at, by: e.ack.by, did: 'acknowledged', note: '' });
+    });
+
+    return E.normalizeState({
+      settings: { place: SAMPLE_PLACE, clock: '12h', soonMinutes: 60 },
+      shift: { id: overnight, name: 'Overnight', by: 'Theo', startedAt: overnightStart },
+      shifts: [{
+        id: 'sample-shift-late', name: 'Late show', by: 'Marisol',
+        startedAt: lateStart, endedAt: overnightStart, handedTo: 'Theo',
+        counts: { open: 4, waiting: 3, done: 2, notAcked: 0 }
+      }],
+      entries: entries
+    }, t);
+  }
+
+  return { SAMPLE_PLACE: SAMPLE_PLACE, makeSample: makeSample };
+}));
+</script>
+<script>
+/*
+ * Shift Handoff: views.
+ *
+ * Pure functions that turn the state into HTML strings. They never touch the
+ * DOM, so the Node tests can render every screen and check what is on it.
+ * Everything that came from a person goes through esc() before it is shown.
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./engine.js'), require('./pro.js'));
+  else root.ShiftView = factory(root.ShiftEngine, root.ShiftPro);
+}(typeof globalThis !== 'undefined' ? globalThis : this, function (E, P) {
+  'use strict';
+
+  const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+  function esc(v) {
+    return String(v === null || v === undefined ? '' : v).replace(/[&<>"']/g, function (c) { return ESC[c]; });
+  }
+
+  function clip(text, max) {
+    const s = String(text).replace(/\s+/g, ' ').trim();
+    return s.length > max ? s.slice(0, max - 1).trim() + '…' : s;
+  }
+
+  const BRAND = '<svg class="brand-icon" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#f2a93b"/>' +
+    '<path d="M14 22h30m-8-8 8 8-8 8M50 42H20m8-8-8 8 8 8" fill="none" stroke="#14161b" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const LOCK = '<svg class="lock" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.75 7V5.25a3.25 3.25 0 0 1 6.5 0V7" fill="none" stroke="currentColor" stroke-width="1.6"/>' +
+    '<rect x="3" y="7" width="10" height="7.5" rx="1.75" fill="currentColor"/></svg>';
+
+  const STATUS_LABEL = { open: 'Open', waiting: 'Waiting', done: 'Done' };
+  const COLUMN_NOTE = { open: 'Still needs doing', waiting: 'Blocked on someone or something', done: 'What happened' };
+  const EMPTY = {
+    open: 'Nothing open. Tap Add to leave something for the next person.',
+    waiting: 'Nothing is waiting on anyone.',
+    done: 'Nothing done yet. Things you finish, and things that just happened, land here.'
+  };
+  const DONE_LIMIT = 20;
+
+  function proButton(id, label, extraClass) {
+    const f = P.feature(id);
+    return '<button type="button" class="btn ghost locked' + (extraClass ? ' ' + extraClass : '') + '" data-act="pro" data-feature="' + esc(f.id) + '"' +
+      ' aria-label="' + esc((label || f.name) + ' (Pro, not open yet)') + '">' + LOCK + '<span>' + esc(label || f.name) + '</span><span class="pro-tag">Pro</span></button>';
+  }
+
+  function datalist(id, items) {
+    return '<datalist id="' + esc(id) + '">' + items.map(function (v) { return '<option value="' + esc(v) + '"></option>'; }).join('') + '</datalist>';
+  }
+
+  function chip(name, value, label, current) {
+    return '<label class="chip"><input type="radio" name="' + esc(name) + '" value="' + esc(value) + '"' + (value === current ? ' checked' : '') + '><span>' + esc(label) + '</span></label>';
+  }
+
+  function priorityBadge(p) {
+    if (p === 'high') return '<span class="badge high">High</span>';
+    if (p === 'low') return '<span class="badge low">Low</span>';
+    return '';
+  }
+
+  // ---------------------------------------------------------------- header
+
+  function header(state, ui, info, now) {
+    info = info || {};
+    const st = state.settings;
+    const shift = state.shift
+      ? esc(state.shift.name) + ' shift · ' + esc(state.shift.by) + ' · since ' + esc(E.fmtWhen(state.shift.startedAt, now, st.clock))
+      : 'No shift running';
+    const c = E.counts(state);
+    const tabs = [
+      ['board', 'Board', c.open + c.waiting ? String(c.open + c.waiting) : ''],
+      ['summary', 'Summary', ''],
+      ['more', 'More', '']
+    ].map(function (t) {
+      return '<button type="button" class="tab" data-act="nav" data-view="' + t[0] + '"' + (ui.view === t[0] ? ' aria-current="page"' : '') + '>' +
+        esc(t[1]) + (t[2] ? ' <span class="count">' + esc(t[2]) + '</span>' : '') + '</button>';
+    }).join('');
+    return '<div class="topbar">' +
+      '<div class="brand">' + BRAND + '<div class="brand-text"><span class="place">' + esc(st.place) + '</span><span class="who">' + shift + '</span></div></div>' +
+      '<span class="save' + (info.saveOk === false ? ' bad' : '') + '">' + (info.saveOk === false ? 'Not saved: this browser blocks storage' : 'Saved on this device') + '</span>' +
+      '</div><nav class="views" aria-label="Views">' + tabs + '</nav>';
+  }
+
+  // ----------------------------------------------------------------- board
+
+  function startForm(state, prefix, handover) {
+    return '<form data-form="start" class="stack" autocomplete="off" novalidate>' +
+      '<label class="f" for="' + prefix + '-by">Your name</label>' +
+      '<input id="' + prefix + '-by" name="by" list="' + prefix + '-people" maxlength="60" placeholder="First name is fine" required>' +
+      '<label class="f" for="' + prefix + '-name">Which shift?</label>' +
+      '<input id="' + prefix + '-name" name="name" list="' + prefix + '-shifts" maxlength="40" placeholder="Morning, Day, Evening, Overnight">' +
+      '<p class="form-error" role="alert"></p>' +
+      '<div class="actions"><button class="btn" type="submit">' + (handover ? 'Take over the shift' : 'Start shift') + '</button>' +
+      (handover ? '<button class="btn ghost" type="button" data-act="close">Cancel</button>' : '') +
+      proButton('signIn', 'Sign in instead') + '</div>' +
+      '<p class="pro-inline" role="status"></p>' +
+      '</form>' + datalist(prefix + '-people', E.people(state)) + datalist(prefix + '-shifts', E.shiftNames(state));
+  }
+
+  function startCard(state) {
+    return '<section class="card start" aria-labelledby="h-start">' +
+      '<h1 id="h-start">Start your shift</h1>' +
+      '<p class="lead">Put your name on the shift, so everything you add, move or acknowledge is marked as yours.</p>' +
+      startForm(state, 'st', false) +
+      '<p class="muted small">First time here? <button type="button" class="link" data-act="sample">Load a sample log</button> from a made-up community radio station and click around.</p>' +
+      '</section>';
+  }
+
+  function handoverBanner(h) {
+    const who = h.from ? esc(h.from) + ' handed over ' : 'You were handed ';
+    return '<section class="banner handover" aria-labelledby="h-hand">' +
+      '<div class="banner-text"><strong id="h-hand">' + who + h.handed + (h.handed === 1 ? ' item' : ' items') + '.</strong> ' +
+      h.acked + ' of ' + h.handed + ' acknowledged. Tap “I’ve got it” on each one, or take them all at once.</div>' +
+      '<progress max="' + h.handed + '" value="' + h.acked + '" aria-label="Acknowledged">' + h.acked + ' of ' + h.handed + '</progress>' +
+      '<button type="button" class="btn" data-act="ackAll">Got it, all ' + h.left + '</button>' +
+      '</section>';
+  }
+
+  function doFirstCard(items, state, now) {
+    const st = state.settings;
+    return '<section class="card first" aria-labelledby="h-first"><h2 id="h-first">Do first</h2><ol class="first-list">' +
+      items.map(function (e) {
+        const due = E.dueText(e, now, st);
+        const meta = [];
+        if (e.status === 'waiting') meta.push('chase ' + (e.waitingOn || 'it'));
+        if (due) meta.push(due);
+        if (e.owner) meta.push(e.owner);
+        return '<li><button type="button" class="first-item" data-act="focus" data-id="' + esc(e.id) + '">' +
+          priorityBadge(e.priority) + '<span class="first-text">' + esc(clip(e.text, 120)) + '</span>' +
+          (meta.length ? '<span class="first-meta due-' + E.dueState(e, now, st.soonMinutes) + '">' + esc(meta.join(' · ')) + '</span>' : '') +
+          '</button></li>';
+      }).join('') + '</ol></section>';
+  }
+
+  function entryCard(e, state, now) {
+    const st = state.settings;
+    const ds = E.dueState(e, now, st.soonMinutes);
+    const due = E.dueText(e, now, st);
+    const needs = E.needsAck(e, state);
+    const acked = E.isAcked(e, state);
+    const top = [priorityBadge(e.priority)];
+    if (e.status === 'waiting') top.push('<span class="pill wait">Waiting on ' + esc(e.waitingOn || 'someone') + '</span>');
+    if (due) top.push('<span class="pill due due-' + ds + '">' + esc(due.charAt(0).toUpperCase() + due.slice(1)) + '</span>');
+    if (needs) top.push('<span class="pill new">Handed to you</span>');
+    const meta = [];
+    if (e.owner) meta.push('Owner: ' + esc(e.owner));
+    meta.push('Added by ' + esc(e.createdBy || 'someone') + ', ' + esc(E.fmtWhen(e.createdAt, now, st.clock)));
+    if (e.status === 'done') meta.push('Done by ' + esc(e.doneBy || 'someone') + ', ' + esc(E.fmtWhen(e.doneAt, now, st.clock)));
+    else {
+      const age = E.ageText(e, now);
+      if (age) meta.push(esc(age.charAt(0).toUpperCase() + age.slice(1)));
+    }
+    const actions = [];
+    if (needs) actions.push('<button type="button" class="btn got" data-act="ack" data-id="' + esc(e.id) + '">I’ve got it</button>');
+    if (e.status === 'open') {
+      actions.push(moveBtn(e, 'waiting', 'Waiting'), moveBtn(e, 'done', 'Done'));
+    } else if (e.status === 'waiting') {
+      actions.push(moveBtn(e, 'open', 'Back to open'), moveBtn(e, 'done', 'Done'));
+    } else {
+      actions.push(moveBtn(e, 'open', 'Reopen'));
+    }
+    actions.push('<button type="button" class="btn ghost small" data-act="edit" data-id="' + esc(e.id) + '">Edit</button>');
+    return '<article class="entry pri-' + e.priority + ' due-' + ds + (needs ? ' needs-ack' : '') + '" id="entry-' + esc(e.id) + '" data-id="' + esc(e.id) + '">' +
+      (top.join('') ? '<div class="entry-top">' + top.join('') + '</div>' : '') +
+      '<p class="text">' + esc(e.text) + '</p>' +
+      '<p class="meta">' + meta.join(' · ') + '</p>' +
+      (acked ? '<p class="ack">Got it: ' + esc(e.ack.by) + ', ' + esc(E.fmtTime(e.ack.at, st.clock)) + '</p>' : '') +
+      '<div class="actions">' + actions.join('') + '</div>' +
+      '</article>';
+  }
+
+  function moveBtn(e, to, label) {
+    return '<button type="button" class="btn ghost small" data-act="move" data-id="' + esc(e.id) + '" data-to="' + to + '"' +
+      ' aria-label="' + esc(label + ': ' + clip(e.text, 60)) + '">' + esc(label) + '</button>';
+  }
+
+  function column(status, state, ui, now) {
+    let items = E.listStatus(state, status, now);
+    const total = items.length;
+    let more = '';
+    if (status === 'done' && !ui.showAllDone && total > DONE_LIMIT) {
+      items = items.slice(0, DONE_LIMIT);
+      more = '<button type="button" class="btn ghost small wide" data-act="allDone">Show all ' + total + ' done</button>';
+    }
+    return '<section class="col" data-col="' + status + '" aria-labelledby="h-col-' + status + '">' +
+      '<h2 id="h-col-' + status + '">' + STATUS_LABEL[status] + ' <span class="count">' + total + '</span></h2>' +
+      '<p class="col-note">' + COLUMN_NOTE[status] + '</p>' +
+      (items.length ? items.map(function (e) { return entryCard(e, state, now); }).join('') : '<p class="empty">' + EMPTY[status] + '</p>') +
+      more + '</section>';
+  }
+
+  function colTabs(current, c) {
+    return '<div class="coltabs" role="group" aria-label="Show column">' +
+      ['open', 'waiting', 'done'].map(function (s) {
+        return '<button type="button" class="tab" data-act="col" data-col="' + s + '" aria-pressed="' + (s === current) + '">' +
+          STATUS_LABEL[s] + ' <span class="count">' + c[s] + '</span></button>';
+      }).join('') + '</div>';
+  }
+
+  function board(state, ui, now) {
+    const out = [];
+    if (!state.shift) out.push(startCard(state));
+    else {
+      const h = E.handoverStatus(state);
+      if (h.left > 0) out.push(handoverBanner(h));
+    }
+    const first = E.doFirst(state, now, 5);
+    if (first.length) out.push(doFirstCard(first, state, now));
+    out.push(colTabs(ui.col, E.counts(state)));
+    out.push('<div class="board" data-show="' + esc(ui.col) + '">' +
+      ['open', 'waiting', 'done'].map(function (s) { return column(s, state, ui, now); }).join('') + '</div>');
+    return out.join('');
+  }
+
+  // --------------------------------------------------------------- summary
+
+  function summaryItem(e, now, st, grouped) {
+    const bits = [];
+    if (e.status === 'waiting' && !grouped) bits.push('waiting on ' + (e.waitingOn || 'someone'));
+    if (e.owner) bits.push('owner ' + e.owner);
+    const due = E.dueText(e, now, st);
+    return '<li>' + priorityBadge(e.priority) + '<span class="s-text">' + esc(e.text) + '</span>' +
+      (bits.length ? ' <span class="s-meta">' + esc(bits.join(', ')) + '</span>' : '') +
+      (due ? ' <span class="s-meta due-' + E.dueState(e, now, st.soonMinutes) + '">' + esc(due) + '</span>' : '') + '</li>';
+  }
+
+  function stat(n, label) {
+    return '<div class="stat"><b>' + n + '</b><span>' + esc(label) + '</span></div>';
+  }
+
+  function summary(state, ui, now, info) {
+    info = info || {};
+    const st = state.settings;
+    const m = E.summaryModel(state, now);
+    const waitingCount = m.waiting.reduce(function (n, g) { return n + g.entries.length; }, 0);
+    const parts = [];
+    parts.push('<section class="summary print-area" aria-labelledby="h-sum">');
+    parts.push('<h1 id="h-sum">End-of-shift summary</h1>');
+    parts.push('<p class="lead"><strong>' + esc(m.place) + '</strong><br>' +
+      (m.shift ? esc(m.shift.name) + ' shift, ' + esc(m.shift.by) + ', since ' + esc(E.fmtStamp(m.shift.startedAt, st.clock)) : 'No shift running') +
+      '<br>Made ' + esc(E.fmtStamp(now, st.clock)) + '</p>');
+    parts.push('<div class="stats">' + stat(m.counts.open, 'open') + stat(m.counts.waiting, 'waiting') +
+      stat(m.counts.doneThisShift, 'done this shift') + stat(m.counts.notAcked, 'not acknowledged') + '</div>');
+
+    parts.push('<h2>Do first</h2>');
+    parts.push(m.doFirst.length
+      ? '<ol class="s-list">' + m.doFirst.map(function (e) { return summaryItem(e, now, st, false); }).join('') + '</ol>'
+      : '<p class="empty">Nothing urgent.</p>');
+
+    parts.push('<h2>Also open <span class="count">' + m.alsoOpen.length + '</span></h2>');
+    parts.push(m.alsoOpen.length
+      ? '<ul class="s-list">' + m.alsoOpen.map(function (e) { return summaryItem(e, now, st, false); }).join('') + '</ul>'
+      : '<p class="empty">Nothing else open.</p>');
+
+    parts.push('<h2>Waiting on others <span class="count">' + waitingCount + '</span></h2>');
+    parts.push(waitingCount
+      ? m.waiting.map(function (g) {
+        return '<h3>On ' + esc(g.who) + '</h3><ul class="s-list">' + g.entries.map(function (e) { return summaryItem(e, now, st, true); }).join('') + '</ul>';
+      }).join('')
+      : '<p class="empty">Nothing waiting.</p>');
+
+    parts.push('<h2>Done this shift <span class="count">' + m.done.length + '</span></h2>');
+    parts.push(m.done.length
+      ? '<ul class="s-list done-list">' + m.done.map(function (e) {
+        return '<li><span class="s-time">' + esc(E.fmtTime(e.doneAt, st.clock)) + '</span><span class="s-text">' + esc(e.text) + '</span>' +
+          (e.doneBy ? ' <span class="s-meta">' + esc(e.doneBy) + '</span>' : '') + '</li>';
+      }).join('') + '</ul>'
+      : '<p class="empty">Nothing logged as done yet.</p>');
+
+    if (m.notAcked.length) {
+      parts.push('<h2>Handed over, not acknowledged yet <span class="count">' + m.notAcked.length + '</span></h2>');
+      parts.push('<ul class="s-list">' + m.notAcked.map(function (e) { return summaryItem(e, now, st, false); }).join('') + '</ul>');
+    }
+    parts.push('</section>');
+
+    parts.push('<div class="actions no-print">' +
+      '<button type="button" class="btn" data-act="print">Print</button>' +
+      '<button type="button" class="btn ghost" data-act="copy">Copy as text</button>' +
+      (info.canShare ? '<button type="button" class="btn ghost" data-act="share">Share</button>' : '') +
+      '<button type="button" class="btn ghost" data-act="handover">Hand over to the next person</button>' +
+      (state.shift ? '<button type="button" class="btn ghost" data-act="endShift">End shift, nobody next</button>' : '') +
+      '</div>');
+
+    parts.push('<section class="card no-print" aria-labelledby="h-sum-pro"><h2 id="h-sum-pro">More in Pro</h2>' +
+      '<p class="muted small">Planned for the Pro edition, which is not open yet.</p><div class="actions">' +
+      proButton('aiSummary') + proButton('weeklyDigest') + proButton('spreadsheetExport') + proButton('reminders') +
+      '</div></section>');
+
+    if (state.shifts.length) {
+      parts.push('<section class="card no-print" aria-labelledby="h-past"><h2 id="h-past">Recent handovers</h2><ul class="past">' +
+        state.shifts.slice(0, 10).map(function (s) {
+          return '<li><strong>' + esc(s.name) + '</strong>, ' + esc(s.by) + (s.handedTo ? ' to ' + esc(s.handedTo) : '') +
+            '<br><span class="muted small">' + esc(E.fmtStamp(s.startedAt, st.clock)) + ' to ' + esc(E.fmtStamp(s.endedAt, st.clock)) +
+            ' · left ' + s.counts.open + ' open, ' + s.counts.waiting + ' waiting · ' + s.counts.done + ' done</span></li>';
+        }).join('') + '</ul></section>');
+    }
+    return parts.join('');
+  }
+
+  // ------------------------------------------------------------------ more
+
+  function settingChip(key, value, label, current) {
+    return '<button type="button" class="tab" data-act="setting" data-key="' + esc(key) + '" data-value="' + esc(value) + '" aria-pressed="' + (String(value) === String(current)) + '">' + esc(label) + '</button>';
+  }
+
+  function more(state, ui, info) {
+    info = info || {};
+    const st = state.settings;
+    return '<h1>More</h1>' +
+      '<section class="card" aria-labelledby="h-log"><h2 id="h-log">This log</h2>' +
+      '<label class="f" for="m-place">Name of the log</label>' +
+      '<input id="m-place" data-setting="place" maxlength="80" value="' + esc(st.place) + '">' +
+      '<p class="hint">Shows at the top of the page and on the printed summary.</p>' +
+      '<p class="f">Clock</p><div class="row-chips">' + settingChip('clock', '12h', '2:30 pm', st.clock) + settingChip('clock', '24h', '14:30', st.clock) + '</div>' +
+      '<p class="f">Count as “due soon” when it is due within</p><div class="row-chips">' +
+      settingChip('soonMinutes', 30, '30 min', st.soonMinutes) + settingChip('soonMinutes', 60, '1 hour', st.soonMinutes) + settingChip('soonMinutes', 120, '2 hours', st.soonMinutes) +
+      '</div></section>' +
+
+      '<section class="card" aria-labelledby="h-data"><h2 id="h-data">Your data</h2>' +
+      '<p class="muted">Everything stays in this browser, on this device. Nothing is sent anywhere. Make a backup now and then, and before you clear your browser.</p>' +
+      '<div class="actions">' +
+      '<button type="button" class="btn" data-act="backup">Back up (.json)</button>' +
+      '<button type="button" class="btn ghost" data-act="restore">Restore a backup</button>' +
+      '<button type="button" class="btn ghost" data-act="csv">Export CSV</button>' +
+      '<button type="button" class="btn ghost" data-act="importCsv">Import CSV</button>' +
+      proButton('spreadsheetExport', 'Spreadsheet (.xlsx)') +
+      '</div><div class="actions">' +
+      '<button type="button" class="btn ghost" data-act="sample">Load the sample log</button>' +
+      '<button type="button" class="btn ghost danger-text" data-act="erase">Erase everything</button>' +
+      '</div></section>' +
+
+      '<section class="card" aria-labelledby="h-install"><h2 id="h-install">Put it on your home screen</h2>' +
+      (info.canInstall ? '<div class="actions"><button type="button" class="btn" data-act="install">Install</button></div>' : '') +
+      '<p class="muted">iPhone or iPad: Share, then Add to Home Screen. Android: the browser menu, then Install app or Add to Home screen. ' +
+      'It opens full screen and keeps working with no signal.</p></section>' +
+
+      '<section class="card" aria-labelledby="h-pro"><h2 id="h-pro">Pro (not open yet)</h2>' +
+      '<p class="muted">These are planned for a Pro edition at ' + esc(P.PRO_PRICE) + '. They are shown here locked so you know what is coming.</p>' +
+      '<ul class="pro-list">' + P.PRO_FEATURES.map(function (f) {
+        return '<li>' + proButton(f.id) + '<span class="muted small">' + esc(f.line) + '</span></li>';
+      }).join('') + '</ul>' +
+      '<p><a href="' + esc(P.PRO_URL) + '" target="_blank" rel="noopener noreferrer">Read PRO.md</a></p></section>' +
+
+      '<section class="card" aria-labelledby="h-about"><h2 id="h-about">About</h2>' +
+      '<p>Shift Handoff' + (info.version ? ' ' + esc(info.version) : '') + '. Free and open source under the MIT licence. ' +
+      'No account, no tracking, no network calls: the page’s own security policy blocks them.</p>' +
+      '<p class="muted small">Shortcuts when adding: <code>@Name</code> sets the owner, <code>!</code> marks it high priority, ' +
+      '<code>by 7am</code> or <code>in 30m</code> sets a due time, <code>waiting on Gus</code> files it under Waiting. Ctrl+Enter saves.</p></section>';
+  }
+
+  // ---------------------------------------------------------------- sheets
+
+  function historyBlock(e, st) {
+    if (!e.history.length) return '';
+    return '<details class="history"><summary>History (' + e.history.length + ')</summary><ul>' +
+      e.history.slice().reverse().map(function (h) {
+        return '<li><span class="s-time">' + esc(E.fmtStamp(h.at, st.clock)) + '</span> ' + esc(h.by || 'someone') + ' ' + esc(h.did) +
+          (h.note ? ': ' + esc(h.note) : '') + '</li>';
+      }).join('') + '</ul></details>';
+  }
+
+  function entryForm(state, ctx) {
+    const st = state.settings;
+    const e = ctx && ctx.id ? E.getEntry(state, ctx.id) : null;
+    const status = e ? e.status : 'open';
+    const pri = e ? e.priority : 'normal';
+    const dueMode = e && e.due ? 'pick' : 'none';
+    return '<form data-form="entry" data-id="' + (e ? esc(e.id) : '') + '" data-status="' + status + '" data-due="' + dueMode + '" novalidate>' +
+      '<h2>' + (e ? 'Edit entry' : 'Add to the log') + '</h2>' +
+      '<label class="f" for="e-text">What does the next person need to know?</label>' +
+      '<textarea id="e-text" name="text" rows="4" maxlength="' + E.MAX_TEXT + '" placeholder="Silence alarm went off, restarted the playout computer, fine since">' + esc(e ? e.text : '') + '</textarea>' +
+      (e ? '' : '<p class="hint">Shortcuts: <code>@Nadia</code> owner, <code>!</code> high, <code>by 7am</code> or <code>in 30m</code> due, <code>waiting on Gus</code>.</p>') +
+      '<fieldset class="chips"><legend>Put it in</legend>' +
+      chip('status', 'open', 'Open', status) + chip('status', 'waiting', 'Waiting', status) + chip('status', 'done', e ? 'Done' : 'Happened (done)', status) +
+      '</fieldset>' +
+      '<div class="when-waiting"><label class="f" for="e-wait">Waiting on who or what?</label>' +
+      '<input id="e-wait" name="waitingOn" list="e-people" maxlength="60" placeholder="A person, a supplier, a part" value="' + esc(e ? e.waitingOn : '') + '"></div>' +
+      '<label class="f" for="e-owner">Owner <span class="muted">(optional)</span></label>' +
+      '<input id="e-owner" name="owner" list="e-people" maxlength="60" placeholder="Who should handle it?" value="' + esc(e ? e.owner : '') + '">' +
+      '<fieldset class="chips"><legend>Priority</legend>' +
+      chip('priority', 'high', 'High', pri) + chip('priority', 'normal', 'Normal', pri) + chip('priority', 'low', 'Low', pri) +
+      '</fieldset>' +
+      '<fieldset class="chips"><legend>Due</legend>' +
+      chip('dueQuick', 'none', 'No time', dueMode) + chip('dueQuick', '30', 'In 30 min', dueMode) + chip('dueQuick', '60', 'In 1 h', dueMode) +
+      chip('dueQuick', '120', 'In 2 h', dueMode) + chip('dueQuick', 'pick', 'Pick a time', dueMode) +
+      '<input type="datetime-local" name="dueAt" class="when-pick" aria-label="Due date and time" value="' + esc(E.toLocalInput(e && e.due)) + '">' +
+      '</fieldset>' +
+      '<div class="attach"><span class="f">Attach</span>' + proButton('media', 'Photo') + proButton('media', 'Voice note') + '</div>' +
+      '<p class="pro-inline" role="status"></p>' +
+      '<p class="form-error" role="alert"></p>' +
+      '<div class="actions"><button class="btn" type="submit">Save</button>' +
+      '<button class="btn ghost" type="button" data-act="close">Cancel</button>' +
+      (e ? '<button class="btn ghost danger-text" type="button" data-act="delete" data-id="' + esc(e.id) + '">Delete</button>' : '') +
+      '</div>' + (e ? historyBlock(e, st) : '') +
+      '</form>' + datalist('e-people', E.people(state));
+  }
+
+  function waitingForm(state, ctx) {
+    const e = E.getEntry(state, ctx.id);
+    return '<form data-form="waiting" data-id="' + esc(e.id) + '" novalidate>' +
+      '<h2>Waiting on who or what?</h2>' +
+      '<p class="muted">' + esc(clip(e.text, 140)) + '</p>' +
+      '<label class="f" for="w-on">Waiting on</label>' +
+      '<input id="w-on" name="waitingOn" list="w-people" maxlength="60" placeholder="Gus, the supplier, a part" value="' + esc(e.waitingOn) + '">' +
+      '<p class="form-error" role="alert"></p>' +
+      '<div class="actions"><button class="btn" type="submit">Move to Waiting</button><button class="btn ghost" type="button" data-act="close">Cancel</button></div>' +
+      '</form>' + datalist('w-people', E.people(state));
+  }
+
+  function handoverSheet(state) {
+    const s = state.shift;
+    return '<h2>Hand over to the next person</h2>' +
+      '<p class="muted">' + (s
+        ? 'This closes ' + esc(s.by) + '’s ' + esc(s.name) + ' shift and keeps a record of it under Recent handovers. '
+        : '') + 'The next person starts their shift here, then taps “I’ve got it” on what they were handed.</p>' +
+      startForm(state, 'ho', true);
+  }
+
+  /** The Pro message shown inside a form, so a draft is not lost. */
+  function proInline(id) {
+    const info = P.explain(id);
+    return LOCK + ' ' + esc(info.message) + ' <a href="' + esc(info.url) + '" target="_blank" rel="noopener noreferrer">Read PRO.md</a>';
+  }
+
+  function proSheet(ctx) {
+    const info = P.explain(ctx.feature);
+    return '<div class="pro-sheet"><h2>' + LOCK + ' ' + esc(info.name) + '</h2>' +
+      '<p>' + esc(info.line) + '</p>' +
+      '<p class="pro-msg">' + esc(info.message) + '</p>' +
+      '<div class="actions"><a class="btn" href="' + esc(info.url) + '" target="_blank" rel="noopener noreferrer">Read PRO.md</a>' +
+      '<button class="btn ghost" type="button" data-act="close">Close</button></div></div>';
+  }
+
+  function eraseSheet() {
+    return '<h2>Erase everything on this device?</h2>' +
+      '<p>This removes every entry and shift from this browser. Make a backup first if you might want any of it back.</p>' +
+      '<div class="actions"><button class="btn danger" type="button" data-act="eraseYes">Erase everything</button>' +
+      '<button class="btn ghost" type="button" data-act="backup">Back up first</button>' +
+      '<button class="btn ghost" type="button" data-act="close">Cancel</button></div>';
+  }
+
+  function copySheet(ctx) {
+    return '<h2>Copy the summary</h2>' +
+      '<p class="muted">This browser would not copy it for us. Select the text below and copy it.</p>' +
+      '<textarea class="copybox" readonly rows="14" aria-label="Summary text">' + esc(ctx.text) + '</textarea>' +
+      '<div class="actions"><button class="btn" type="button" data-act="close">Done</button></div>';
+  }
+
+  function messageSheet(ctx) {
+    return '<h2>' + esc(ctx.title) + '</h2><p>' + esc(ctx.text) + '</p>' +
+      '<div class="actions"><button class="btn" type="button" data-act="close">OK</button></div>';
+  }
+
+  function sheet(kind, state, ctx) {
+    ctx = ctx || {};
+    switch (kind) {
+      case 'entry': return entryForm(state, ctx);
+      case 'waiting': return waitingForm(state, ctx);
+      case 'handover': return handoverSheet(state);
+      case 'pro': return proSheet(ctx);
+      case 'erase': return eraseSheet();
+      case 'copy': return copySheet(ctx);
+      case 'message': return messageSheet(ctx);
+      default: throw new Error('Unknown sheet: ' + kind);
+    }
+  }
+
+  return {
+    esc: esc,
+    clip: clip,
+    proButton: proButton,
+    proInline: proInline,
+    header: header,
+    board: board,
+    entryCard: entryCard,
+    summary: summary,
+    more: more,
+    sheet: sheet
+  };
+}));
+</script>
+<script>
+/*
+ * Shift Handoff: the page.
+ *
+ * Wires the engine and the views to the browser: saves to localStorage,
+ * handles taps and forms, downloads backups. It makes no network requests.
+ */
+(function () {
+  'use strict';
+
+  const E = window.ShiftEngine;
+  const V = window.ShiftView;
+  const S = window.ShiftSample;
+
+  const KEY = 'shift-handoff:v1';
+  const UI_KEY = 'shift-handoff:ui';
+  const VIEWS = ['board', 'summary', 'more'];
+  const COLS = ['open', 'waiting', 'done'];
+
+  const $ = function (id) { return document.getElementById(id); };
+  const versionMeta = document.querySelector('meta[name="app-version"]');
+  const VERSION = versionMeta ? versionMeta.getAttribute('content') : '';
+
+  let state = E.emptyState();
+  let ui = { view: 'board', col: 'open', showAllDone: false };
+  let saveOk = true;
+  let undoState = null;
+  let toastTimer = null;
+  let installEvent = null;
+
+  // ------------------------------------------------------------- storage
+
+  function load() {
+    let raw = null;
+    try {
+      raw = localStorage.getItem(KEY);
+    } catch (err) {
+      saveOk = false; // storage is blocked (private window, strict settings)
+    }
+    state = E.emptyState();
+    if (raw) {
+      try {
+        state = E.normalizeState(JSON.parse(raw));
+      } catch (err) {
+        // Keep unreadable data to one side instead of overwriting it.
+        try { localStorage.setItem(KEY + ':unreadable', raw); } catch (e2) { /* nothing more to do */ }
+      }
+    }
+    try {
+      const saved = JSON.parse(localStorage.getItem(UI_KEY) || '{}');
+      if (VIEWS.indexOf(saved.view) >= 0) ui.view = saved.view;
+      if (COLS.indexOf(saved.col) >= 0) ui.col = saved.col;
+    } catch (err) { /* a remembered tab is only a convenience */ }
+  }
+
+  function save() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(state));
+      saveOk = true;
+    } catch (err) {
+      saveOk = false;
+    }
+  }
+
+  function saveUi() {
+    try { localStorage.setItem(UI_KEY, JSON.stringify({ view: ui.view, col: ui.col })); } catch (err) { /* fine */ }
+  }
+
+  // ------------------------------------------------------------ rendering
+
+  function render() {
+    const now = new Date();
+    $('top').innerHTML = V.header(state, ui, { saveOk: saveOk }, now);
+    let html;
+    if (ui.view === 'summary') html = V.summary(state, ui, now, { canShare: typeof navigator.share === 'function' });
+    else if (ui.view === 'more') html = V.more(state, ui, { canInstall: !!installEvent, version: VERSION });
+    else html = V.board(state, ui, now);
+    $('app').innerHTML = html;
+    $('fab').hidden = ui.view !== 'board';
+    document.title = state.settings.place === E.DEFAULT_SETTINGS.place ? 'Shift Handoff' : state.settings.place + ' · Shift Handoff';
+  }
+
+  /** Apply a change: save it, redraw, and offer Undo when asked. */
+  function commit(next, message, undoable) {
+    const before = state;
+    state = next;
+    save();
+    render();
+    if (message) toast(message, undoable ? before : null);
+  }
+
+  function attempt(fn) {
+    try {
+      fn();
+    } catch (err) {
+      openSheet('message', { title: 'That did not work', text: err && err.message ? err.message : String(err) });
+    }
+  }
+
+  // ---------------------------------------------------------------- toast
+
+  function toast(message, before) {
+    const el = $('toast');
+    undoState = before || null;
+    el.innerHTML = '<span></span>' + (undoState ? '<button type="button" class="link" data-act="undo">Undo</button>' : '');
+    el.firstChild.textContent = message;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () {
+      el.classList.remove('show');
+      undoState = null;
+    }, undoState ? 7000 : 3500);
+  }
+
+  // ---------------------------------------------------------------- sheet
+
+  function openSheet(kind, ctx) {
+    const dlg = $('sheet');
+    $('sheetBody').innerHTML = V.sheet(kind, state, ctx);
+    if (typeof dlg.showModal === 'function') {
+      if (!dlg.open) dlg.showModal();
+    } else {
+      dlg.setAttribute('open', '');
+    }
+    const first = $('sheetBody').querySelector('textarea:not([readonly]), input:not([type="radio"]):not([type="datetime-local"])');
+    if (first) first.focus();
+    else {
+      const btn = $('sheetBody').querySelector('button, a');
+      if (btn) btn.focus();
+    }
+  }
+
+  function closeSheet() {
+    const dlg = $('sheet');
+    if (typeof dlg.close === 'function' && dlg.open) dlg.close();
+    else dlg.removeAttribute('open');
+    $('sheetBody').innerHTML = '';
+  }
+
+  function formError(form, message) {
+    const el = form.querySelector('.form-error');
+    if (el) el.textContent = message;
+  }
+
+  // ------------------------------------------------------------ files
+
+  function download(name, text, type) {
+    const blob = new Blob([text], { type: type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+  }
+
+  function pickFile(accept, onText) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = accept;
+    input.addEventListener('change', function () {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function () { attempt(function () { onText(String(reader.result)); }); };
+      reader.onerror = function () { openSheet('message', { title: 'Could not read that file', text: 'Try again, or pick a different file.' }); };
+      reader.readAsText(file);
+    });
+    input.click();
+  }
+
+  function copyText(text) {
+    const fallback = function () { openSheet('copy', { text: text }); };
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      navigator.clipboard.writeText(text).then(function () { toast('Summary copied'); }, fallback);
+    } else {
+      fallback();
+    }
+  }
+
+  // -------------------------------------------------------------- actions
+
+  function go(view) {
+    ui.view = view;
+    saveUi();
+    render();
+    window.scrollTo(0, 0);
+  }
+
+  function focusEntry(id) {
+    const e = state.entries.find(function (x) { return x.id === id; });
+    if (!e) return;
+    ui.col = e.status;
+    ui.view = 'board';
+    saveUi();
+    render();
+    const el = document.getElementById('entry-' + id);
+    if (el) {
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      el.classList.add('flash');
+      setTimeout(function () { el.classList.remove('flash'); }, 1600);
+    }
+  }
+
+  const actions = {
+    nav: function (d) { if (VIEWS.indexOf(d.view) >= 0) go(d.view); },
+    col: function (d) { if (COLS.indexOf(d.col) >= 0) { ui.col = d.col; saveUi(); render(); } },
+    add: function () { openSheet('entry', {}); },
+    edit: function (d) { openSheet('entry', { id: d.id }); },
+    focus: function (d) { focusEntry(d.id); },
+    move: function (d) {
+      if (d.to === 'waiting') { openSheet('waiting', { id: d.id }); return; }
+      commit(E.moveEntry(state, d.id, d.to, new Date()), d.to === 'done' ? 'Marked done' : 'Moved to Open', true);
+    },
+    ack: function (d) { commit(E.acknowledge(state, d.id, new Date()), 'Got it', true); },
+    ackAll: function () { commit(E.acknowledgeAll(state, new Date()), 'Got it, all of them', true); },
+    delete: function (d) { closeSheet(); commit(E.removeEntry(state, d.id), 'Deleted', true); },
+    undo: function () {
+      if (!undoState) return;
+      state = undoState;
+      undoState = null;
+      save();
+      render();
+      $('toast').classList.remove('show');
+    },
+    close: function () { closeSheet(); },
+    allDone: function () { ui.showAllDone = true; render(); },
+    handover: function () { openSheet('handover', {}); },
+    endShift: function () { commit(E.endShift(state, new Date()), 'Shift ended', true); },
+    print: function () { window.print(); },
+    copy: function () { copyText(E.summaryText(state, new Date())); },
+    share: function () {
+      const text = E.summaryText(state, new Date());
+      navigator.share({ title: 'Shift handoff: ' + state.settings.place, text: text }).catch(function () { /* closed the share sheet */ });
+    },
+    setting: function (d) {
+      const patch = {};
+      patch[d.key] = d.key === 'soonMinutes' ? Number(d.value) : d.value;
+      commit(E.updateSettings(state, patch));
+    },
+    backup: function () {
+      const now = new Date();
+      download('shift-handoff-backup-' + E.dateStamp(now) + '.json', E.toBackup(state, now), 'application/json');
+      toast('Backup saved to your downloads');
+    },
+    restore: function () {
+      pickFile('.json,application/json', function (text) {
+        commit(E.fromBackup(text), 'Backup restored', true);
+      });
+    },
+    csv: function () {
+      download('shift-handoff-' + E.dateStamp(new Date()) + '.csv', E.toCSV(state), 'text/csv;charset=utf-8');
+      toast('CSV saved to your downloads');
+    },
+    importCsv: function () {
+      pickFile('.csv,text/csv', function (text) {
+        const r = E.importCSV(state, text, new Date());
+        commit(r.state, 'Added ' + r.added + (r.added === 1 ? ' entry' : ' entries') + (r.skipped ? ', skipped ' + r.skipped + ' already here' : ''), true);
+      });
+    },
+    sample: function () {
+      ui.col = 'open';
+      commit(S.makeSample(new Date()), 'Loaded the sample log', true);
+    },
+    erase: function () { openSheet('erase', {}); },
+    eraseYes: function () { closeSheet(); commit(E.emptyState(), 'Erased', true); },
+    pro: function (d, el) {
+      // Inside a form, show the message in place so nothing typed is lost.
+      const form = el && typeof el.closest === 'function' ? el.closest('form') : null;
+      const holder = form ? form.querySelector('.pro-inline') : null;
+      if (holder) {
+        holder.innerHTML = V.proInline(d.feature);
+        return;
+      }
+      openSheet('pro', { feature: d.feature });
+    },
+    install: function () {
+      if (!installEvent) return;
+      installEvent.prompt();
+      installEvent = null;
+      render();
+    }
+  };
+
+  function onClick(ev) {
+    const el = ev.target.closest('[data-act]');
+    if (!el) return;
+    const fn = actions[el.dataset.act];
+    if (!fn) return;
+    ev.preventDefault();
+    attempt(function () { fn(el.dataset, el); });
+  }
+
+  // --------------------------------------------------------------- forms
+
+  function readDue(form, now) {
+    const mode = (form.querySelector('input[name="dueQuick"]:checked') || {}).value || 'none';
+    if (mode === 'none') return null;
+    if (mode === 'pick') return E.fromLocalInput(form.elements.dueAt.value);
+    return E.addMinutes(now, Number(mode)).toISOString();
+  }
+
+  function radioValue(form, name, fallback) {
+    const el = form.querySelector('input[name="' + name + '"]:checked');
+    return el ? el.value : fallback;
+  }
+
+  function submitEntry(form) {
+    const now = new Date();
+    const id = form.dataset.id;
+    const f = form.elements;
+    const mode = (form.querySelector('input[name="dueQuick"]:checked') || {}).value;
+    if (mode === 'pick' && !E.fromLocalInput(f.dueAt.value)) {
+      formError(form, 'Pick a date and time, or choose No time.');
+      return;
+    }
+    const input = {
+      text: f.text.value,
+      status: radioValue(form, 'status', 'open'),
+      priority: radioValue(form, 'priority', 'normal'),
+      owner: f.owner.value,
+      waitingOn: f.waitingOn.value,
+      due: readDue(form, now)
+    };
+    if (!id) {
+      const merged = E.mergeQuick(input, E.quickParse(input.text, now));
+      commit(E.addEntry(state, merged, now), merged.status === 'done' ? 'Logged as done' : 'Added to ' + merged.status, true);
+      closeSheet();
+      return;
+    }
+    const current = E.getEntry(state, id);
+    let next = state;
+    if (input.status !== current.status) next = E.moveEntry(next, id, input.status, now, { waitingOn: input.waitingOn });
+    const patch = { text: input.text, priority: input.priority, owner: input.owner, due: input.due };
+    if (input.status === 'waiting') patch.waitingOn = input.waitingOn;
+    next = E.updateEntry(next, id, patch, now);
+    commit(next, 'Saved', true);
+    closeSheet();
+  }
+
+  function onSubmit(ev) {
+    const form = ev.target;
+    if (!form.dataset || !form.dataset.form) return;
+    ev.preventDefault();
+    try {
+      if (form.dataset.form === 'entry') submitEntry(form);
+      else if (form.dataset.form === 'waiting') {
+        commit(E.moveEntry(state, form.dataset.id, 'waiting', new Date(), { waitingOn: form.elements.waitingOn.value }), 'Moved to Waiting', true);
+        closeSheet();
+      } else if (form.dataset.form === 'start') {
+        const was = state.shift;
+        const next = E.startShift(state, { by: form.elements.by.value, name: form.elements.name.value }, new Date());
+        closeSheet();
+        ui.view = 'board';
+        ui.col = 'open';
+        saveUi();
+        commit(next, was ? 'Handed over. Welcome, ' + next.shift.by : 'Shift started', true);
+        window.scrollTo(0, 0);
+      }
+    } catch (err) {
+      formError(form, err && err.message ? err.message : String(err));
+    }
+  }
+
+  function onChange(ev) {
+    const t = ev.target;
+    const form = t.form;
+    if (form && form.dataset.form === 'entry') {
+      if (t.name === 'status') form.dataset.status = t.value;
+      if (t.name === 'dueQuick') {
+        form.dataset.due = t.value;
+        if (t.value === 'pick' && !form.elements.dueAt.value) {
+          form.elements.dueAt.value = E.toLocalInput(E.addMinutes(new Date(), 60));
+        }
+      }
+      formError(form, '');
+    }
+    if (t.dataset && t.dataset.setting === 'place') {
+      commit(E.updateSettings(state, { place: t.value }), 'Name saved');
+    }
+  }
+
+  function onKey(ev) {
+    if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey) && ev.target.form && ev.target.form.dataset.form) {
+      ev.preventDefault();
+      if (typeof ev.target.form.requestSubmit === 'function') ev.target.form.requestSubmit();
+      else ev.target.form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+    }
+  }
+
+  // ---------------------------------------------------------------- start
+
+  function typing() {
+    const a = document.activeElement;
+    return !!a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);
+  }
+
+  function start() {
+    load();
+    render();
+    document.addEventListener('click', onClick);
+    document.addEventListener('submit', onSubmit);
+    document.addEventListener('change', onChange);
+    document.addEventListener('keydown', onKey);
+    $('sheet').addEventListener('click', function (ev) {
+      if (ev.target === $('sheet')) closeSheet();
+    });
+    $('sheet').addEventListener('close', function () { $('sheetBody').innerHTML = ''; });
+
+    // Keep due times fresh without disturbing anyone mid-typing.
+    setInterval(function () {
+      if (document.hidden || $('sheet').open || typing()) return;
+      render();
+    }, 30000);
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden && !$('sheet').open && !typing()) render();
+    });
+
+    // Two tabs on the same device stay in step.
+    window.addEventListener('storage', function (ev) {
+      if (ev.key !== KEY) return;
+      load();
+      if (!$('sheet').open && !typing()) render();
+    });
+
+    window.addEventListener('beforeinstallprompt', function (ev) {
+      ev.preventDefault();
+      installEvent = ev;
+      if (ui.view === 'more') render();
+    });
+
+    // Offline support. Only works when the page is served over http(s).
+    if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js').catch(function () { /* no offline copy, still works */ });
+      });
+    }
+  }
+
+  window.ShiftApp = { render: render, state: function () { return state; }, actions: actions };
+  start();
+}());
+</script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "name": "shift-handoff",
+  "version": "1.0.0",
+  "description": "A free one-page log for handing work from one shift to the next. Works offline, data stays on the device.",
+  "license": "MIT",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/westidwell/shift-handoff.git"
+  },
+  "scripts": {
+    "build": "node build.js",
+    "check": "node build.js --check",
+    "test": "node --test",
+    "start": "node tools/serve.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

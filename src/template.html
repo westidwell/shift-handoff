@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="@@CSP@@">
+<meta name="referrer" content="no-referrer">
+<title>Shift Handoff</title>
+<meta name="description" content="A free one-page log for handing work from one shift to the next: what is open, what is waiting on whom, what happened, and what to do first.">
+<meta name="app-version" content="@@VERSION@@">
+<meta name="theme-color" content="#0e1116">
+<meta name="color-scheme" content="dark">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Handoff">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="@@FAVICON@@">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<!-- @css -->
+</head>
+<body>
+<header class="top" id="top"></header>
+<main class="wrap" id="app">
+  <noscript><p class="card">Shift Handoff needs JavaScript turned on. Nothing you type is sent anywhere; it all stays in this browser.</p></noscript>
+</main>
+<button type="button" class="fab" id="fab" data-act="add" aria-label="Add to the log"><span aria-hidden="true">+</span> Add</button>
+<dialog id="sheet" aria-label="Details"><div id="sheetBody" class="sheet-body"></div></dialog>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<!-- @js -->
+</body>
+</html>
